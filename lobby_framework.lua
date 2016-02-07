@@ -226,7 +226,6 @@ do
 			label.Text = ((processed_data[loadout_type..'_'..label.Name] or {'none'})[1] or 'none'):upper()
 			
 			label.RightArrow.MouseButton1Up:connect(function()
-				print(processed_data[loadout_type..'_'..label.Name])
 				label.Text = (list(loadout_type..'_'..label.Name,1) or 'none'):upper()
 			end)
 			
@@ -299,7 +298,7 @@ end
 
 
 
-print('kek 2')
+
 
 
 

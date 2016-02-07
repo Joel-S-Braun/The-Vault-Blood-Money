@@ -146,7 +146,7 @@ do
 	function load.crime_net(visible)
 		local self = lobby_gui.CrimeNet
 		self.Visible = visible
-		load.folder(self.Options
+		load.folder(self.Options,
 			{
 				['Menu'] = {
 					['mouse-enter'] = function() colour.tween(self.Options.Menu,color_on,.1) end;

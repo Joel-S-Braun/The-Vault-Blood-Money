@@ -62,12 +62,14 @@ end
 
 local function list(name,offset)
 	local processed = processed_data[name]
-	local new = {}
-	for i = 1,#processed do
-		new[i] = processed[((i+offset-1)%#processed)+1]
+	if processed then
+		local new = {}
+		for i = 1,#processed do
+			new[i] = processed[((i+offset-1)%#processed)+1]
+		end
+		processed_data[name] = new
+		return processed_data[name][1]
 	end
-	processed_data[name] = new
-	return processed_data[name][1]
 end
 
 

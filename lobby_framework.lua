@@ -274,8 +274,8 @@ do
 				};
 
 				['Shop'] = {
-					['mouse-enter'] = function() folder['Shop']:TweenPosition(UDim2.new(0.15, 15,1, -105),'Out','Sine',.2,true) colour.tween(folder['Shop'],color_on) end;
-					['mouse-leave'] = function() folder['Shop']:TweenPosition(UDim2.new(0.15, 15,1, -75),'Out','Sine',.2,true) colour.tween(folder['Shop'],color_off) end;
+					['mouse-enter'] = function() folder['Shop']:TweenPosition(UDim2.new(0.25, 15,1, -105),'Out','Sine',.2,true) colour.tween(folder['Shop'],color_on) end;
+					['mouse-leave'] = function() folder['Shop']:TweenPosition(UDim2.new(0.25, 15,1, -75),'Out','Sine',.2,true) colour.tween(folder['Shop'],color_off) end;
 					['button-1-up'] = function() lobby_gui.Menu.Visible = false lobby_gui.Shop.Visible = true end;
 				};
 

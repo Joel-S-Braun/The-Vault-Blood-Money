@@ -258,7 +258,7 @@ do
 	function load.shop(visible)
 		local self = lobby_gui.Shop
 		self.Visible = visible
-		load.folder(self.Options
+		load.folder(self.Options,
 			{
 				['Inventory'] = {
 					['mouse-enter'] = function() colour.tween(self.Options.Inventory,color_on,.1) end;

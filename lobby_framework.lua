@@ -258,6 +258,22 @@ do
 	function load.shop(visible)
 		local self = lobby_gui.Shop
 		self.Visible = visible
+		load.folder(self.Options
+			{
+				['Inventory'] = {
+					['mouse-enter'] = function() colour.tween(self.Options.Inventory,color_on,.1) end;
+					['mouse-leave'] = function() colour.tween(self.Options.Inventory,color_off,.1) end;
+				};
+				['Menu'] = {
+					['mouse-enter'] = function() colour.tween(self.Options.Menu,color_on,.1) end;
+					['mouse-leave'] = function() colour.tween(self.Options.Menu,color_off,.1) end;
+				};
+				['Shop'] = {
+					['mouse-enter'] = function() colour.tween(self.Options.Shop,color_on,.1) end;
+					['mouse-leave'] = function() colour.tween(self.Options.Shop,color_off,.1) end;
+				};
+			}
+		)
 	end
 	
 

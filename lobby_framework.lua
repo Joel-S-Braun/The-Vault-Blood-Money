@@ -155,7 +155,7 @@ do
 				};
 				['CreateParty'] = {
 					['mouse-enter'] = function() colour.tween(self.Options.CreateParty,color_on,.1) end;
-					['mouse-leave'] = function() colour.tween(self.Options.CreateParty,color_on,.1) end;
+					['mouse-leave'] = function() colour.tween(self.Options.CreateParty,color_off,.1) end;
 				};
 			}
 		)
@@ -308,7 +308,7 @@ do
 		)
 	end
 end
-
+ 
 
 
 

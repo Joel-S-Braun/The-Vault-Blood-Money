@@ -186,7 +186,7 @@ do
 			end)
 		end
 	end
-	im
+	
 
 	function load.loadout(visible)
 		local self = lobby_gui.Loadout

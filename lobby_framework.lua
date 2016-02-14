@@ -142,7 +142,8 @@ do
 		end
 	end
 	
-
+	
+	
 	function load.crime_net(visible)
 		local self = lobby_gui.CrimeNet
 		self.Visible = visible
@@ -185,7 +186,7 @@ do
 			end)
 		end
 	end
-	
+	im
 
 	function load.loadout(visible)
 		local self = lobby_gui.Loadout
@@ -246,6 +247,29 @@ do
 				label.Text = (list(loadout_type..'_'..label.Name,-1) or 'none'):upper()
 			end)
 		end
+
+
+		load.folder(self.Options,
+			{
+				['Back'] = {
+					['mouse-enter'] = function() colour.tween(self.Options.Menu,color_on,.1) end;
+					['mouse-leave'] = function() colour.tween(self.Options.Menu,color_off,.1) end;
+					['button-1-up'] = function() self.Visible = false lobby_gui.Menu.Visible = true end;
+				};
+				['Character'] = {
+					['mouse-enter'] = function() colour.tween(self.Options.Menu,color_on,.1) end;
+					['mouse-leave'] = function() colour.tween(self.Options.Menu,color_off,.1) end;
+				};
+				['Skills'] = {
+					['mouse-enter'] = function() colour.tween(self.Options.Menu,color_on,.1) end;
+					['mouse-leave'] = function() colour.tween(self.Options.Menu,color_off,.1) end;
+				};
+				['Loadout'] = { -- lol
+					['mouse-enter'] = function() colour.tween(self.Options.Menu,color_on,.1) end;
+					['mouse-leave'] = function() colour.tween(self.Options.Menu,color_off,.1) end;
+				};
+			}
+		)
 	end
 	
 
@@ -263,14 +287,17 @@ do
 				['Inventory'] = {
 					['mouse-enter'] = function() colour.tween(self.Options.Inventory,color_on,.1) end;
 					['mouse-leave'] = function() colour.tween(self.Options.Inventory,color_off,.1) end;
+					--['button-1-up'] = load_inventory_items;
 				};
 				['Menu'] = {
 					['mouse-enter'] = function() colour.tween(self.Options.Menu,color_on,.1) end;
 					['mouse-leave'] = function() colour.tween(self.Options.Menu,color_off,.1) end;
+					['button-1-up'] = function() self.Visible = false lobby_gui.Menu.Visible = true end;
 				};
 				['Shop'] = {
 					['mouse-enter'] = function() colour.tween(self.Options.Shop,color_on,.1) end;
 					['mouse-leave'] = function() colour.tween(self.Options.Shop,color_off,.1) end;
+
 				};
 			}
 		)

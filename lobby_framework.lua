@@ -257,16 +257,16 @@ do
 					['button-1-up'] = function() self.Visible = false lobby_gui.Menu.Visible = true end;
 				};
 				['Character'] = {
-					['mouse-enter'] = function() colour.tween(self.Options.Menu,color_on,.1) end;
-					['mouse-leave'] = function() colour.tween(self.Options.Menu,color_off,.1) end;
+					['mouse-enter'] = function() colour.tween(self.Options.Character,color_on,.1) end;
+					['mouse-leave'] = function() colour.tween(self.Options.Character,color_off,.1) end;
 				};
 				['Skills'] = {
-					['mouse-enter'] = function() colour.tween(self.Options.Menu,color_on,.1) end;
-					['mouse-leave'] = function() colour.tween(self.Options.Menu,color_off,.1) end;
+					['mouse-enter'] = function() colour.tween(self.Options.Skills,color_on,.1) end;
+					['mouse-leave'] = function() colour.tween(self.Options.Skills,color_off,.1) end;
 				};
 				['Loadout'] = { -- lol
-					['mouse-enter'] = function() colour.tween(self.Options.Menu,color_on,.1) end;
-					['mouse-leave'] = function() colour.tween(self.Options.Menu,color_off,.1) end;
+					['mouse-enter'] = function() colour.tween(self.Options.Loadout,color_on,.1) end;
+					['mouse-leave'] = function() colour.tween(self.Options.Loadout,color_off,.1) end;
 				};
 			}
 		)

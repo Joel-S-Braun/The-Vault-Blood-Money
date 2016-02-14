@@ -251,7 +251,7 @@ do
 
 		load.folder(self.Options,
 			{
-				['Back'] = {
+				['Menu'] = {
 					['mouse-enter'] = function() colour.tween(self.Options.Menu,color_on,.1) end;
 					['mouse-leave'] = function() colour.tween(self.Options.Menu,color_off,.1) end;
 					['button-1-up'] = function() self.Visible = false lobby_gui.Menu.Visible = true end;

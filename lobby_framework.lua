@@ -22,6 +22,7 @@ workspace.CurrentCamera.CoordinateFrame = CFrame.new(
 local load = {}
 local colour = {}
 local vector = {}
+local button_id = {}
 local processed_data = { -- formatted version of data stored or maybe raw idk yet
 	['Primary_Attachment'] = {
 		'Laser';
@@ -139,13 +140,17 @@ do
 	end	
 
 	function load.button(button,switchtable)
+		button_id[button:GetFullName()] = switchtable
 		button.MouseButton1Up:connect(switch('button-1-up')(switchtable) or fnil)
 		button.MouseButton1Down:connect(switch('button-1-down')(switchtable) or fnil)
 		button.MouseEnter:connect(switch('mouse-enter')(switchtable) or load.highlight(button))
 		button.MouseLeave:connect(switch('mouse-leave')(switchtable) or load.lowlight(button))
 	end
 
-	
+	function get_button_switchtable(button)
+		return button_id[button:GetFullName()]
+	end
+
 	function load.folder(folder,switchtable)
 		switchtable['default'] = {}
 		local folderchildren = folder:GetChildren()
@@ -165,11 +170,10 @@ do
 
 	function load.off(frame)
 		for i,v in pairs(frame:GetChildren()) do
-			pcall(function() -- ik its disgusting im sorry ok bebi
-				if v.BackgroundColor3 == color_on then
-					v.BackgroundColor3 = color_off
-				end
-			end)
+			local switchtable = get_button_switchtable(v)
+			if switchtable then
+				(switchtable['mouse-leave'] or load.lowlight(button))()
+			end
 			load.off(v)
 		end
 	end

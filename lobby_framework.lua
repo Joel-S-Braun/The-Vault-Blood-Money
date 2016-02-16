@@ -135,7 +135,7 @@ do
 	end
 
 	function load.lowlight(button)
-		return function() color.tween(button,color_on,.1) end
+		return function() colour.tween(button,color_on,.1) end
 	end	
 
 	function load.button(button,switchtable)
@@ -276,8 +276,6 @@ do
 		load.folder(self.Options,
 			{
 				['Menu'] = {
-					['mouse-enter'] = function() colour.tween(self.Options.Menu,color_on,.1) end;
-					['mouse-leave'] = function() colour.tween(self.Options.Menu,color_off,.1) end;
 					['button-1-up'] = function() self.Visible = false lobby_gui.Menu.Visible = true end;
 				};
 			}

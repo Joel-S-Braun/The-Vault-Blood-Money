@@ -83,6 +83,7 @@ end
 
 
 
+
 --@vectormodule
 do
 	local col = Color3.new
@@ -120,7 +121,6 @@ do
 		end
 	end
 end
-
 
 
 
@@ -172,7 +172,7 @@ do
 		for i,v in pairs(frame:GetChildren()) do
 			local switchtable = get_button_switchtable(v)
 			if switchtable then
-				(switchtable['mouse-leave'] or load.lowlight(button))()
+				(switchtable['mouse-leave'] or load.lowlight(v))()
 			end
 			load.off(v)
 		end

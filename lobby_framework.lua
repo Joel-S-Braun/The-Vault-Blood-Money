@@ -169,7 +169,7 @@ do
 				if v.BackgroundColor3 == color_on then
 					v.BackgroundColor3 = color_off
 				end
-			end
+			end)
 			load.off(v)
 		end
 	end
@@ -275,7 +275,7 @@ do
 		load.folder(self.Options,
 			{
 				['Menu'] = {
-					['button-1-up'] = function() self.Visible = false lobby_gui.Menu.Visible = true end;
+					['button-1-up'] = load.switch_ui(self,lobby_gui.Menu)
 				};
 			}
 		)
@@ -294,7 +294,7 @@ do
 		load.folder(self.Options,
 			{
 				['Menu'] = {
-					['button-1-up'] = function() self.Visible = false lobby_gui.Menu.Visible = true end;
+					['button-1-up'] = load.switch_ui(self,lobby_gui.Menu)
 				};
 			}
 		)
@@ -324,19 +324,19 @@ do
 				['CRIME.NET'] = {
 					['mouse-enter'] = function() folder['CRIME.NET']:TweenPosition(UDim2.new(0, 15,1, -105),'Out','Sine',.2,true) colour.tween(folder['CRIME.NET'],color_on) end;
 					['mouse-leave'] = function() folder['CRIME.NET']:TweenPosition(UDim2.new(0, 15,1, -75),'Out','Sine',.2,true) colour.tween(folder['CRIME.NET'],color_off) end;
-					['button-1-up'] = function() lobby_gui.Menu.Visible = false lobby_gui.CrimeNet.Visible = true end;
+					['button-1-up'] = load.switch_ui(lobby_gui.Menu,lobby_gui.CrimeNet)
 				};
 
 				['Shop'] = {
 					['mouse-enter'] = function() folder['Shop']:TweenPosition(UDim2.new(0.25, 15,1, -105),'Out','Sine',.2,true) colour.tween(folder['Shop'],color_on) end;
 					['mouse-leave'] = function() folder['Shop']:TweenPosition(UDim2.new(0.25, 15,1, -75),'Out','Sine',.2,true) colour.tween(folder['Shop'],color_off) end;
-					['button-1-up'] = function() lobby_gui.Menu.Visible = false lobby_gui.Shop.Visible = true end;
+					['button-1-up'] = load.switch_ui(lobby_gui.Menu,lobby_gui.Shop)
 				};
 
 				['Loadout'] = {
 					['mouse-enter'] = function() folder['Loadout']:TweenPosition(UDim2.new(0.5, 15,1, -105),'Out','Sine',.2,true) colour.tween(folder['Loadout'],color_on) end;
 					['mouse-leave'] = function() folder['Loadout']:TweenPosition(UDim2.new(0.5, 15,1, -75),'Out','Sine',.2,true) colour.tween(folder['Loadout'],color_off) end;
-					['button-1-up'] = function() lobby_gui.Menu.Visible = false lobby_gui.Loadout.Visible = true end;
+					['button-1-up'] = load.switch_ui(lobby_gui.Menu,lobby_gui.Loadout)
 				};
 
 				['Tutorial'] = {

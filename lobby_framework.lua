@@ -111,14 +111,24 @@ do
 		return vector.to_color3(colour.to_vector3(c1):lerp(colour.to_vector3(c2),delta))
 	end
 
-	function colour.tween(frame,c2,time) -- EW REPLACE WITH BIND TO RUNSERVICE
+	function colour.tween(frame,c2,time)
+		run_service:UnbindFromRenderStep(frame:GetFullName()) -- in case there was an anim running beforehand
 		local time = time or .1
 		local c1 = frame.BackgroundColor3
-		for delta = 0,1,(1/time)/60 do
-			frame.BackgroundColor3 = colour.lerp(c1,c2,delta)
-			run_service.RenderStepped:wait()
-			-- WHY THE FUCK ISNT THERE A RENDERSTEPPED WAIT HERE. WHY.
-		end
+		local base = tick()
+		run_service:BindToRenderStep(frame:GetFullName(),Enum.RenderPriority.Camera.Value,function()
+			local elapsed_time = (tick()-base)
+			local delta = elapsed_time/time
+			if delta > 1 then
+				delta = 1
+				frame.BackgroundColor3 = colour.lerp(c1,c2,delta)
+				print(colour.lerp(c1,c2,delta),delta)
+				run_service:UnbindFromRenderStep(frame:GetFullName())
+			else
+				frame.BackgroundColor3 = colour.lerp(c1,c2,delta)
+				print(colour.lerp(c1,c2,delta),delta)
+			end
+		end)
 	end
 end
 
@@ -229,15 +239,15 @@ do
 		
 		self.Main.Centre.Primary.MouseButton1Up:connect(function()
 			loadout_type = 'Primary'
-			coroutine.wrap(colour.tween)(self.Main.Centre.Primary,color_highlight,.1)
-			coroutine.wrap(colour.tween)(self.Main.Centre.Secondary,color_black,.1)
+			colour.tween(self.Main.Centre.Primary,color_highlight,.1)
+			colour.tween(self.Main.Centre.Secondary,color_black,.1)
 			update()
 		end)
 		
 		self.Main.Centre.Secondary.MouseButton1Up:connect(function()
 			loadout_type = 'Secondary'
-			coroutine.wrap(colour.tween)(self.Main.Centre.Primary,color_black,.1)
-			coroutine.wrap(colour.tween)(self.Main.Centre.Secondary,color_highlight,.1) -- dont worry, coroutines make me cry just as much as they make u cry
+			colour.tween(self.Main.Centre.Primary,color_black,.1)
+			colour.tween(self.Main.Centre.Secondary,color_highlight,.1)
 			update()
 		end)
 		
@@ -326,26 +336,26 @@ do
 			folder,
 			{
 				['CRIME.NET'] = {
-					['mouse-enter'] = function() folder['CRIME.NET']:TweenPosition(UDim2.new(0, 15,1, -105),'Out','Sine',.2,true) colour.tween(folder['CRIME.NET'],color_on) end;
-					['mouse-leave'] = function() folder['CRIME.NET']:TweenPosition(UDim2.new(0, 15,1, -75),'Out','Sine',.2,true) colour.tween(folder['CRIME.NET'],color_off) end;
+					['mouse-enter'] = function() folder['CRIME.NET'].Facade:TweenPosition(UDim2.new(0,0,0,0),'Out','Sine',.2,true) colour.tween(folder['CRIME.NET'].Facade,color_on,.1) end;
+					['mouse-leave'] = function() folder['CRIME.NET'].Facade:TweenPosition(UDim2.new(0,0,0,20),'Out','Sine',.2,true) colour.tween(folder['CRIME.NET'].Facade,color_off,.1) end;
 					['button-1-up'] = load.switch_ui(lobby_gui.Menu,lobby_gui.CrimeNet)
 				};
 
 				['Shop'] = {
-					['mouse-enter'] = function() folder['Shop']:TweenPosition(UDim2.new(0.25, 15,1, -105),'Out','Sine',.2,true) colour.tween(folder['Shop'],color_on) end;
-					['mouse-leave'] = function() folder['Shop']:TweenPosition(UDim2.new(0.25, 15,1, -75),'Out','Sine',.2,true) colour.tween(folder['Shop'],color_off) end;
+					['mouse-enter'] = function() folder['Shop'].Facade:TweenPosition(UDim2.new(0,0,0,0),'Out','Sine',.2,true) colour.tween(folder['Shop'].Facade,color_on,.1) end;
+					['mouse-leave'] = function() folder['Shop'].Facade:TweenPosition(UDim2.new(0,0,0,20),'Out','Sine',.2,true) colour.tween(folder['Shop'].Facade,color_off,.1) end;
 					['button-1-up'] = load.switch_ui(lobby_gui.Menu,lobby_gui.Shop)
 				};
 
 				['Loadout'] = {
-					['mouse-enter'] = function() folder['Loadout']:TweenPosition(UDim2.new(0.5, 15,1, -105),'Out','Sine',.2,true) colour.tween(folder['Loadout'],color_on) end;
-					['mouse-leave'] = function() folder['Loadout']:TweenPosition(UDim2.new(0.5, 15,1, -75),'Out','Sine',.2,true) colour.tween(folder['Loadout'],color_off) end;
-					['button-1-up'] = load.switch_ui(lobby_gui.Menu,lobby_gui.Loadout)
+					['mouse-enter'] = function() folder['Loadout'].Facade:TweenPosition(UDim2.new(0,0,0,0),'Out','Sine',.2,true) colour.tween(folder['Loadout'].Facade,color_on,.1) end;
+					['mouse-leave'] = function() folder['Loadout'].Facade:TweenPosition(UDim2.new(0,0,0,20),'Out','Sine',.2,true) colour.tween(folder['Loadout'].Facade,color_off,.1) end;
+					['button-1-up'] = function() print('dun kno') load.switch_ui(lobby_gui.Menu,lobby_gui.Loadout) end
 				};
 
 				['Tutorial'] = {
-					['mouse-enter'] = function() folder['Tutorial']:TweenPosition(UDim2.new(0.75, 15,1, -105),'Out','Sine',.2,true) colour.tween(folder['Tutorial'],color_on) end;
-					['mouse-leave'] = function() folder['Tutorial']:TweenPosition(UDim2.new(0.75, 15,1, -75),'Out','Sine',.2,true) colour.tween(folder['Tutorial'],color_off) end;
+					['mouse-enter'] = function() folder['Tutorial'].Facade:TweenPosition(UDim2.new(0,0,0,0),'Out','Sine',.2,true) colour.tween(folder['Tutorial'].Facade,color_on,.1) end;
+					['mouse-leave'] = function() folder['Tutorial'].Facade:TweenPosition(UDim2.new(0,0,0,20),'Out','Sine',.2,true) colour.tween(folder['Tutorial'].Facade,color_off,.1) end;
 				};
  			
 			}

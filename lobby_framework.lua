@@ -135,7 +135,7 @@ do
 	end
 
 	function load.lowlight(button)
-		return function() colour.tween(button,color_on,.1) end
+		return function() colour.tween(button,color_off,.1) end
 	end	
 
 	function load.button(button,switchtable)

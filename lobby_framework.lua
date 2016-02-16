@@ -155,6 +155,24 @@ do
 		end
 	end
 	
+	function load.switch_ui(old,new)
+		return function()
+			old.Visible = false
+			new.Visible = true
+			load.off(old)
+		end
+	end
+
+	function load.off(frame)
+		for i,v in pairs(frame:GetChildren()) do
+			pcall(function() -- ik its disgusting im sorry ok bebi
+				if v.BackgroundColor3 == color_on then
+					v.BackgroundColor3 = color_off
+				end
+			end
+			load.off(v)
+		end
+	end
 	
 	
 	function load.crime_net(visible)
@@ -163,7 +181,7 @@ do
 		load.folder(self.Options,
 			{
 				['Menu'] = {
-					['button-1-up'] = function() self.Visible = false lobby_gui.Menu.Visible = true end;
+					['button-1-up'] = load.switch_ui(self,lobby_gui.Menu);
 				};
 			}
 		)

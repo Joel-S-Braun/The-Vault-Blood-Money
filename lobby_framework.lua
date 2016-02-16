@@ -55,6 +55,8 @@ local processed_data = { -- formatted version of data stored or maybe raw idk ye
 } 
 
 local loadout_type = 'Primary'
+local fnil = function() end
+
 local color_off = Color3.new(13/255,13/255,13/255)
 local color_on = Color3.new(40/255,40/255,40/255)
 local color_highlight = Color3.new(37/255,37/255,37/255)
@@ -128,17 +130,24 @@ end
 
 --@load-module
 do
+	function load.highlight(button)
+		return function() colour.tween(button,color_on,.1) end
+	end
+
+	function load.lowlight(button)
+		return function() color.tween(button,color_on,.1) end
+	end	
+
 	function load.button(button,switchtable)
-		switchtable['default'] = function() end
-		button.MouseButton1Up:connect(switch('button-1-up')(switchtable))
-		button.MouseButton1Down:connect(switch('button-1-down')(switchtable))
-		button.MouseEnter:connect(switch('mouse-enter')(switchtable))
-		button.MouseLeave:connect(switch('mouse-leave')(switchtable))
+		button.MouseButton1Up:connect(switch('button-1-up')(switchtable) or fnil)
+		button.MouseButton1Down:connect(switch('button-1-down')(switchtable) or fnil)
+		button.MouseEnter:connect(switch('mouse-enter')(switchtable) or load.highlight(button))
+		button.MouseLeave:connect(switch('mouse-leave')(switchtable) or load.lowlight(button))
 	end
 
 	
 	function load.folder(folder,switchtable)
-		switchtable['default'] = {default=function()end}
+		switchtable['default'] = {}
 		local folderchildren = folder:GetChildren()
 		for i = 1,#folderchildren do
 			local button = folderchildren[i]
@@ -154,13 +163,7 @@ do
 		load.folder(self.Options,
 			{
 				['Menu'] = {
-					['mouse-enter'] = function() colour.tween(self.Options.Menu,color_on,.1) end;
-					['mouse-leave'] = function() colour.tween(self.Options.Menu,color_off,.1) end;
 					['button-1-up'] = function() self.Visible = false lobby_gui.Menu.Visible = true end;
-				};
-				['CreateParty'] = {
-					['mouse-enter'] = function() colour.tween(self.Options.CreateParty,color_on,.1) end;
-					['mouse-leave'] = function() colour.tween(self.Options.CreateParty,color_off,.1) end;
 				};
 			}
 		)
@@ -171,8 +174,6 @@ do
 		local self = lobby_gui.EditParty
 		self.Visible = visible
 	end
--- upd8
-	
 	function load.character(visible)
 		local self = lobby_gui.Character
 		self.Visible = visible
@@ -256,21 +257,7 @@ do
 		load.folder(self.Options,
 			{
 				['Menu'] = {
-					['mouse-enter'] = function() colour.tween(self.Options.Menu,color_on,.1) end;
-					['mouse-leave'] = function() colour.tween(self.Options.Menu,color_off,.1) end;
 					['button-1-up'] = function() self.Visible = false lobby_gui.Menu.Visible = true end;
-				};
-				['Character'] = {
-					['mouse-enter'] = function() colour.tween(self.Options.Character,color_on,.1) end;
-					['mouse-leave'] = function() colour.tween(self.Options.Character,color_off,.1) end;
-				};
-				['Skills'] = {
-					['mouse-enter'] = function() colour.tween(self.Options.Skills,color_on,.1) end;
-					['mouse-leave'] = function() colour.tween(self.Options.Skills,color_off,.1) end;
-				};
-				['Loadout'] = { -- lol
-					['mouse-enter'] = function() colour.tween(self.Options.Loadout,color_on,.1) end;
-					['mouse-leave'] = function() colour.tween(self.Options.Loadout,color_off,.1) end;
 				};
 			}
 		)
@@ -288,20 +275,10 @@ do
 		self.Visible = visible
 		load.folder(self.Options,
 			{
-				['Inventory'] = {
-					['mouse-enter'] = function() colour.tween(self.Options.Inventory,color_on,.1) end;
-					['mouse-leave'] = function() colour.tween(self.Options.Inventory,color_off,.1) end;
-					--['button-1-up'] = load_inventory_items;
-				};
 				['Menu'] = {
 					['mouse-enter'] = function() colour.tween(self.Options.Menu,color_on,.1) end;
 					['mouse-leave'] = function() colour.tween(self.Options.Menu,color_off,.1) end;
 					['button-1-up'] = function() self.Visible = false lobby_gui.Menu.Visible = true end;
-				};
-				['Shop'] = {
-					['mouse-enter'] = function() colour.tween(self.Options.Shop,color_on,.1) end;
-					['mouse-leave'] = function() colour.tween(self.Options.Shop,color_off,.1) end;
-
 				};
 			}
 		)

@@ -13,7 +13,11 @@ local player_gui = local_player:WaitForChild('PlayerGui')
 local lobby_gui = player_gui:WaitForChild('LobbyGui')
 
 workspace.CurrentCamera.CameraType = 6
-workspace.CurrentCamera.CoordinateFrame = CFrame.new(-55.5601311, 7.1210412, 20.1081375, 0.469456315, 0.172260368, -0.839931607, 7.45058149e-09, 0.951272726, 0.30835107, 0.88295579, -0.14475736, 0.446580946)
+workspace.CurrentCamera.CoordinateFrame = CFrame.new(
+	-55.5601311, 7.1210412, 20.1081375, 
+	0.469456315, 0.172260368, -0.839931607, 
+	7.45058149e-09, 0.951272726, 0.30835107, 
+	0.88295579, -0.14475736, 0.446580946)
 
 local load = {}
 local colour = {}
@@ -167,7 +171,7 @@ do
 		local self = lobby_gui.EditParty
 		self.Visible = visible
 	end
-
+-- upd8
 	
 	function load.character(visible)
 		local self = lobby_gui.Character

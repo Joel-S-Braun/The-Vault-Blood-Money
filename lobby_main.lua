@@ -70,7 +70,7 @@ do
 		function event:fire(...)
 			event.value={...}
 			if name then
-				_network.RemoteEvent:FireAllClients(name...)
+				_network.RemoteEvent:FireAllClients(name,...)
 			end
 			for _,v in pairs(event.connections) do
 				v(...)

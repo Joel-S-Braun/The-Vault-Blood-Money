@@ -5,12 +5,16 @@
 	@load-module
 	@colour-module
 --]]
-
-local _game = game
-local run_service = _game:GetService('RunService')
+?
+local run_service = game:GetService('RunService')
 local local_player = game.Players.LocalPlayer
+local starter_gui = game.StarterGui
 local player_gui = local_player:WaitForChild('PlayerGui')
-local lobby_gui = player_gui:WaitForChild('LobbyGui')
+local lobby_gui = starter_gui.LobbyGui:Clone()
+lobby_gui.Parent = player_gui
+
+local _replicated_storage = game.ReplicatedStorage
+local _network = _replicated_storage.Network
 
 workspace.CurrentCamera.CameraType = 6
 workspace.CurrentCamera.CoordinateFrame = CFrame.new(
@@ -122,11 +126,9 @@ do
 			if delta > 1 then
 				delta = 1
 				frame.BackgroundColor3 = colour.lerp(c1,c2,delta)
-				print(colour.lerp(c1,c2,delta),delta)
 				run_service:UnbindFromRenderStep(frame:GetFullName())
 			else
 				frame.BackgroundColor3 = colour.lerp(c1,c2,delta)
-				print(colour.lerp(c1,c2,delta),delta)
 			end
 		end)
 	end
@@ -319,6 +321,18 @@ do
 		local self = lobby_gui.Menu
 		local notification = self.Notification.Text
 		local img = self.Notification
+		local update = game.ReplicatedStorage.Network.EventState:InvokeServer('update')
+		local update = game.HttpService:JSONDecode(update)
+		local number = (('0'):rep(6-#update['Update_Count'])..update['Update_Count'])
+		local txt = ''
+		for i = 3,8,2 do -- could probably use gmatch but im too lazy
+			txt = txt..number:sub(i-2,i-1)..'/' 
+		end 
+		txt = (txt:sub(1,#txt-1))
+		
+		self.Notification.Text.UpdateNumber.Text = txt
+		self.Notification.Text.Description.Text = update['Update']
+		
 		self.Visible = visible
 		load.button(
 			self.Notification.ImageButton,
@@ -350,7 +364,7 @@ do
 				['Loadout'] = {
 					['mouse-enter'] = function() folder['Loadout'].Facade:TweenPosition(UDim2.new(0,0,0,0),'Out','Sine',.2,true) colour.tween(folder['Loadout'].Facade,color_on,.1) end;
 					['mouse-leave'] = function() folder['Loadout'].Facade:TweenPosition(UDim2.new(0,0,0,20),'Out','Sine',.2,true) colour.tween(folder['Loadout'].Facade,color_off,.1) end;
-					['button-1-up'] = function() print('dun kno') load.switch_ui(lobby_gui.Menu,lobby_gui.Loadout) end
+					['button-1-up'] = load.switch_ui(lobby_gui.Menu,lobby_gui.Loadout)
 				};
 
 				['Tutorial'] = {
@@ -371,7 +385,7 @@ end
 
 load.character()
 load.crime_net()
-load.edit_party()
+load.edit_party	()
 load.loadout()
 load.ready_up()
 load.shop()

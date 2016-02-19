@@ -1,4 +1,4 @@
 {
-	"Update_Count":"1",
-	"Update":"Testing new update system, using JSON encoding/decoding via GitHub. :D"
+	"Update_Count":"2",
+	"Update":"Data now saves, new networking system which is used for the data persistance. GUIs loading is now handled slightly differently; however will be further changed."
 }

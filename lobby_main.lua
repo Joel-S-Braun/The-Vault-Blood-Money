@@ -2,22 +2,39 @@
 	@17/2/16
 	
 	@heartbeat-module
+	@network-module
 	@event-module
 --]]
 
 local _replicated_storage = game.ReplicatedStorage
 local _network = _replicated_storage.Network
 
-local data_store = game:GetService("DataStoreService"):GetDataStore('Data')
+local data_store_service = game:GetService("DataStoreService")
+local item_data = data_store_service:GetDataStore('Item_Data')
+local player_data = data_store_service:GetDataStore('Player_Data')
 local http_service = game:GetService('HttpService')
 local run_service = game:GetService('RunService')
 
 local event_id = {}
 local event = {}
 local heartbeat = {}
-local binded_events
+local network = {}
+local binded_events = {}
+local remote_functions = {}
+local player_info = {}
+local items_info = {}
+local connect = {}
 
 local github_raw = 'https://raw.githubusercontent.com/WaffloidRBX/The-Vault-Blood-Money/master/'
+
+
+
+
+
+
+
+
+
 
 
 
@@ -45,12 +62,50 @@ end
 
 
 
+
+
+
+
+
+
+
+
+
+--@network-module
+do
+	_network.RemoteEvent.OnServerEvent:connect(function(player,name,...)
+		print(player,name,...)
+		if connect[name] then
+			connect[name](player,...)
+		end
+	end)
+	
+	function network.invoke(...) -- player,name,...
+		return _network.RemoteFunction:InvokeClient(...)
+	end
+	
+	function network.get_event(player,name) -- player, name
+		return unpack(network.invoke(player,'get_event',name))
+	end	
+end
+
+
+
+
+
+
+
+
+
+
+
+
 --@event-module
 do
 	
 	function event.to_pseudo(real)
 		local event = event.new()
-		real:connect(event.fire)
+		real:connect(event['fire'])
 		return event
 	end
 	
@@ -67,10 +122,15 @@ do
 			end
 		end
 		
+		function event:change_val(...)
+			event.value = {...}
+		end
+		
 		function event:fire(...)
 			event.value={...}
-			if name then
-				_network.RemoteEvent:FireAllClients(name,...)
+			if event.name then
+				print("fire in the booth'd")
+				_network.RemoteEvent:FireAllClients(event.name,...)
 			end
 			for _,v in pairs(event.connections) do
 				v(...)
@@ -93,18 +153,95 @@ do
 		return event
 	end
 	
-	_network.EventState.OnServerInvoke = function(player,name)
+	remote_functions['get_event'] = function(player,name)
 		for i,v in pairs(event_id) do
 			if v.name == name then
-				repeat wait() until v.value
 				return v.value
 			end
 		end
 	end
+	
+	_network.RemoteFunction.OnServerInvoke = function(player,name,...)
+		return remote_functions[name](player,...)
+	end
 end
 
-local player_added = (game.Players.PlayerAdded)
-local player_removing = (game.Players.PlayerRemoving)
 
-local update = event.new('update') -- lol it never even fires, just holds data like a good gamelogic
-update.value = (http_service:GetAsync(github_raw..'update')) -- loads JSON stored on github which contains update info
+
+
+
+
+    
+
+
+
+
+
+
+
+--unlisted
+do
+	local default_item_data = { -- formatted version of data stored or maybe raw idk yet
+		['Primary_Attachment'] = {
+			'Laser';
+			'Green laser';
+			false;
+		}; -- first option is current equipped item, false is 'none'
+		['Primary_Sight'] = {
+			'Holo sight';
+			'VCOG sight';
+			false;
+		};
+		['Primary_Weapon'] ={
+			'AK47';
+			'M16';
+			'SPAS-12';
+		};
+		
+		['Secondary_Attachment'] = {
+			'Laser';
+			false;
+		};
+		['Secondary_Sight'] = {
+			'STR sight';
+			false;
+		};
+		['Secondary_Weapon'] = {
+			'M9';
+			'Deagle';
+			'Revolver';
+		};
+	}
+	
+	
+	
+	local player_added = (game.Players.PlayerAdded)
+	local player_removing = (game.Players.PlayerRemoving)
+	
+	connect['list_updated'] = function(player,info)
+		print(info['Primary_Attachment'][1])
+		items_info[player.Name] = info
+	end
+	
+	remote_functions['get_item_data'] = function(player)
+		local info = item_data:GetAsync(player.UserId)
+		print(info)
+		info = info or default_item_data
+		items_info[player.Name] = info
+		return info
+	end
+	
+	remote_functions['get_player_data'] = function(player)
+		local info = player_data:GetAsync(player.UserId) or {Cash = 0,last_login = os.time(),} -- label = nil
+		player_info[player.Name] = info
+		return info
+	end
+	
+	player_removing:connect(function(player)
+		item_data:SetAsync(player.UserId,items_info[player.Name])
+		player_data:SetAsync(player.UserId,player_info[player.Name]) -- yes ik 2 different SetAsyncs im sorry ok IM SORRY
+	end)
+	
+	local update = event.new('update') -- lol it never even fires, just holds data like a good gamelogic cell
+	update:change_val((http_service:GetAsync(github_raw..'update'))) -- loads JSON stored on github which contains update info
+end

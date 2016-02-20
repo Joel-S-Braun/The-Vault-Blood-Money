@@ -74,7 +74,6 @@ end
 --@network-module
 do
 	_network.RemoteEvent.OnServerEvent:connect(function(player,name,...)
-		print(player,name,...)
 		if connect[name] then
 			connect[name](player,...)
 		end
@@ -100,6 +99,8 @@ end
 
 
 
+
+
 --@event-module
 do
 	
@@ -112,7 +113,7 @@ do
 	function event.new(name) -- tbh it does far more than just handle events but watevr (works like gamelogic cells + events)
 		local event = {name=name,connections={}}
 		
-		event_id[tostring(event)] = event
+		event_id[event.name or tostring(event)] = event
 		
 		function event:connect(func)
 			local id = tostring(func)
@@ -129,7 +130,6 @@ do
 		function event:fire(...)
 			event.value={...}
 			if event.name then
-				print("fire in the booth'd")
 				_network.RemoteEvent:FireAllClients(event.name,...)
 			end
 			for _,v in pairs(event.connections) do
@@ -154,14 +154,11 @@ do
 	end
 	
 	remote_functions['get_event'] = function(player,name)
-		for i,v in pairs(event_id) do
-			if v.name == name then
-				return v.value
-			end
-		end
+		return event_id[name].value -- simples
 	end
 	
 	_network.RemoteFunction.OnServerInvoke = function(player,name,...)
+		repeat wait() until remote_functions[name]
 		return remote_functions[name](player,...)
 	end
 end
@@ -214,13 +211,18 @@ do
 	}
 	
 	
+	local update = event.new('update') -- lol it never even fires, just holds data like a good gamelogic cell
+	update:change_val((http_service:GetAsync(github_raw..'update'))) -- loads JSON stored on github which contains update info
 	
 	local player_added = (game.Players.PlayerAdded)
 	local player_removing = (game.Players.PlayerRemoving)
 	
 	connect['list_updated'] = function(player,info)
-		print(info['Primary_Attachment'][1])
 		items_info[player.Name] = info
+	end
+	
+	connect['player_data_updated'] = function(player,info)
+		player_info[player.Name] = info
 	end
 	
 	remote_functions['get_item_data'] = function(player)
@@ -232,7 +234,7 @@ do
 	end
 	
 	remote_functions['get_player_data'] = function(player)
-		local info = player_data:GetAsync(player.UserId) or {Cash = 0,last_login = os.time(),} -- label = nil
+		local info = player_data:GetAsync(player.UserId) or {Cash = 0,last_login = os.time(),last_update = ''} -- label = nil
 		player_info[player.Name] = info
 		return info
 	end
@@ -241,7 +243,4 @@ do
 		item_data:SetAsync(player.UserId,items_info[player.Name])
 		player_data:SetAsync(player.UserId,player_info[player.Name]) -- yes ik 2 different SetAsyncs im sorry ok IM SORRY
 	end)
-	
-	local update = event.new('update') -- lol it never even fires, just holds data like a good gamelogic cell
-	update:change_val((http_service:GetAsync(github_raw..'update'))) -- loads JSON stored on github which contains update info
 end

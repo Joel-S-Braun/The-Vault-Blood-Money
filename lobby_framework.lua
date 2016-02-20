@@ -43,7 +43,7 @@ local color_black = Color3.new(0,0,0)
 
 local function fnil() end
 local function switch(input)
-	return function(self) return self[input] or self['default'] or fnil end
+	return function(self) return self[input] or self['default'] end
 end
 
 
@@ -154,7 +154,6 @@ do
 		function event:fire(...)
 			event.value={...}
 			if event.name then
-				print('fired')
 				_network.RemoteEvent:FireServer(event.name,...)
 			end
 			for _,v in pairs(event.connections) do
@@ -230,6 +229,16 @@ do
 			end
 		end)
 	end
+	
+	function colour.flash(frame)
+		local base = tick()
+		run_service:BindToRenderStep(frame:GetFullName(),Enum.RenderPriority.Camera.Value,function()
+			local offset = tick()-base
+			local delta = (math.abs(math.sin(offset))*.106)+(13/255)
+			local col = Color3.new(delta,delta,delta)
+			frame.BackgroundColor3 = col
+		end)
+	end
 end
 
 
@@ -257,8 +266,8 @@ do
 
 	function load.button(button,switchtable)
 		button_id[button:GetFullName()] = switchtable
-		button.MouseButton1Up:connect(switch('button-1-up')(switchtable))
-		button.MouseButton1Down:connect(switch('button-1-down')(switchtable))
+		button.MouseButton1Up:connect(switch('button-1-up')(switchtable) or fnil)
+		button.MouseButton1Down:connect(switch('button-1-down')(switchtable) or fnil)
 		button.MouseEnter:connect(switch('mouse-enter')(switchtable) or load.highlight(button))
 		button.MouseLeave:connect(switch('mouse-leave')(switchtable) or load.lowlight(button))
 	end
@@ -295,11 +304,13 @@ do
 		end
 	end
 	
-	item_data = network.invoke('get_item_data')
+	local item_data = network.invoke('get_item_data')
+	local player_data = network.invoke('get_player_data')
 	
 	function load.ui()
 		
 		local list_updated = event.new('list_updated')
+		local player_data_updated = event.new('player_data_updated')
 		
 		local function list(name,offset)
 			local processed = item_data[name]
@@ -432,6 +443,8 @@ do
 			)
 		end
 		local function menu()
+			local flash
+			
 			local self = lobby_gui.Menu
 			local notification = self.Notification.Text
 			local img = self.Notification
@@ -439,20 +452,32 @@ do
 			local update = game.HttpService:JSONDecode(update)
 			local number = (('0'):rep(6-#update['Update_Count'])..update['Update_Count'])
 			local txt = ''
+			
 			for i = 3,8,2 do -- could probably use gmatch but im too lazy
 				txt = txt..number:sub(i-2,i-1)..'/' 
 			end 
 			txt = (txt:sub(1,#txt-1))
 			
+			if player_data.last_update ~= update then
+				flash = true
+				colour.flash(self.Notification)
+			end
+			
+			print(flash)
+			
 			self.Notification.Text.UpdateNumber.Text = txt
 			self.Notification.Text.Description.Text = update['Update']
+			
+			self.PlayerData.Username.Text = local_player.Name:upper()
+			self.PlayerData.Cash.Text = '$'..player_data.Cash
 			
 			self.Visible = true
 			load.button(
 				self.Notification.ImageButton,
 				{
 					['mouse-leave'] = function() notification:TweenPosition(UDim2.new(0,75,1.5,0),'Out','Sine',.3,true) colour.tween(img,color_off) end;
-					['mouse-enter'] = function() notification:TweenPosition(UDim2.new(-2.5,0,1.5,0),'Out','Sine',.3,true) colour.tween(img,color_on) end;
+					['mouse-enter'] = function() notification:TweenPosition(UDim2.new(-2.5,0,1.5,0),'Out','Sine',.3,true) colour.tween(img,color_on) 
+						if flash then player_data.last_update = update player_data_updated:fire(player_data) end end;
 				}
 			)
 			local folder = self.Buttons
@@ -495,3 +520,5 @@ do
 	end
 	load.ui()
 end
+
+print('fin')

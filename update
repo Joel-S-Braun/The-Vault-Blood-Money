@@ -1,4 +1,4 @@
 {
-	"Update_Count":"2",
-	"Update":"Data now saves, new networking system which is used for the data persistance. GUIs loading is now handled slightly differently; however will be further changed."
+	"Update_Count":"3",
+	"Update":"Added flash effect on update bar; modified event serialisation"
 }

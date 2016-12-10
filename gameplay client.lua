@@ -81,6 +81,14 @@ local function get_obj(real_model)
 	return model
 end
 
+for i,v in pairs(workspace.SWAT:GetChildren()) do
+	Instance.new('Humanoid',v)
+end
+
+workspace.SWAT.ChildAdded:connect(function(x)
+	Instance.new('Humanoid',x)
+end)
+
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------
 walk = 
@@ -127,11 +135,7 @@ hipfire =
 
 
 
-for i,v in pairs(workspace.Enemys:GetChildren()) do
-	v.ChildAdded:connect(function(v)
-		Instance.new('Humanoid',v)
-	end)
-end
+------- add SHIT FOR PSEUDO CHARS
 
 
 
@@ -198,170 +202,70 @@ end
 
 
 
+--@color module
+do
+	local positive_not_scared_desired = Color3.new(30/255, 199/255, 143/255)
+	local negative_not_scared_desired = Color3.new(255/255, 0, 0)
+	local positive_sadness_desired = Color3.new(0, 24/255, 158/255)
+	local negative_sadness_desired = Color3.new(215/255, 255/255, 153/255)
+	
+	local increment = .35
+	local delta_increment = 1
+
+
+	function decide_emotion_color(not_scared,sadness)
+		local not_scared_color,sadness_color
+		if math.abs(not_scared) == not_scared then
+			not_scared_color = Color3.new(.5,.5,.5):lerp(positive_not_scared_desired,(not_scared/10)^increment)
+		else
+			not_scared_color = Color3.new(.5,.5,.5):lerp(negative_not_scared_desired,(not_scared/-10)^increment)
+		end
+		
+		if math.abs(sadness) == sadness then
+			sadness_color = Color3.new(.5,.5,.5):lerp(positive_sadness_desired,(sadness/10)^increment)
+		else
+			sadness_color = Color3.new(.5,.5,.5):lerp(negative_sadness_desired,(sadness/-10)^increment)
+		end
+		
+		local delta = math.abs(not_scared)/(math.abs(sadness)+math.abs(not_scared))
+		return sadness_color:lerp(not_scared_color,delta)
+	end
+	
+	run_service:BindToRenderStep('Detection',199,function()
+		for _,object in pairs(workspace.DetectionMeter:GetChildren()) do
+			object.block.CFrame = CFrame.new(object.Value.Position + Vector3.new(0,2,0)) * CFrame.Angles(math.rad(45),math.rad(45),0)
+			local transparency = (math.abs(object.Not_Scared.Value+object.Sadness.Value)/10)^.3
+			if transparency < .05 and transparency > -.05 then
+				transparency = 1
+			end
+			local color = decide_emotion_color(object.Not_Scared.Value,object.Sadness.Value)
+			object.block.BrickColor = BrickColor.new(color)
+			object.block.Transparency = transparency
+			for i,v in pairs(object.block:GetChildren()) do
+				v.Frame.Transparency = transparency
+				v.Frame.BackgroundColor3 = color
+			end
+		end
+	end)
+end
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 --@animation module
 do
-	function animation.compile(anim)
-		local length = 0
-		for index,keyframe in pairs(anim.animation) do
-			length = length + keyframe.time
-		end
-		
-		anim.length = length + anim.interp_time
-		
-		function anim:get_keyframe(time,loop) -- first keyframe must be same as last keyframe for true loop
-			if loop then
-				time = time % anim.length
-			elseif time > anim.length then
-				return #anim.animation-1,#anim.animation,1,'terminate'
-			end
-			if time <= 0 then
-				warn("Attempted to get a keyframe either below or equal to 0")
-				time = 0.000001
-			end
-			local curr_len = 0
-			for key,keyframe in pairs(anim.animation) do
-				curr_len = curr_len + keyframe.time
-				if curr_len >= time then
-					local start_time = curr_len-keyframe.time
-					
-					local delta = (time - start_time) / keyframe.time
-					return key-1,key, delta
-				end
-			end
-		end
-	end
-	
-	animation.compile(walk)
-	animation.compile(aim)
-	animation.compile(falling)
-	animation.compile(idle)
-	animation.compile(hipfire)
-	
-	run_service:BindToRenderStep("Animation calulation",198,function()
-		weld_status = {} -- idk if this'll reduce GC spam or increase it lol
-		for object,animations in pairs(running_animations) do
-			local animation_output = {} -- the CFrame data compiled from all animations for each object in 1 table, will be used to modify objects weld stuff to animate, {cframe,priority}
-			for animation_name,data in pairs(animations) do
-				local start_time = data.start_time
-				local real_animation = getfenv()[animation_name]
-				local curr_time = (tick()-start_time)
-				if curr_time%real_animation.length <= real_animation.interp_time then
-					if current_keyframe[object:GetFullName()][animation_name] ~= 1 then
-						current_keyframe[object:GetFullName()][animation_name] = 1
-						if real_animation.states[1] then
-							for i,v in pairs(real_animation.states[1]) do
-								v()
-							end
-						end
-					end
-					if curr_time > real_animation.interp_time then
-						animation_start[object:GetFullName()][animation_name] = real_animation.animation[#real_animation.animation].joints
-					end
-					local start,finish,delta = animation_start[object:GetFullName()][animation_name],real_animation.animation[1].joints,(curr_time % real_animation.length)/(real_animation.interp_time)
-					for joint_name,value in pairs(finish) do
-						data = {cframe=start[joint_name]:lerp(value,delta),priority=real_animation.priority}
-						
-						if not animation_output[joint_name] then
-							animation_output[joint_name] = {cframe=start[joint_name]:lerp(value,delta),priority=real_animation.priority,kek=delta}
-						elseif animation_output[joint_name].priority <= real_animation.priority then
-							animation_output[joint_name] = {cframe=start[joint_name]:lerp(value,delta),priority=real_animation.priority}
-						end
-					end
-				else
-					
-					local start_key,end_key,delta,terminate = real_animation:get_keyframe((tick()-start_time) - real_animation.interp_time,data.looped)
-					
-					if current_keyframe[object:GetFullName()][animation_name] ~= end_key then
-						current_keyframe[object:GetFullName()][animation_name] = end_key
-						if real_animation.states[end_key] then
-							for i,v in pairs(real_animation.states[end_key]) do
-								v()
-							end
-						end
-					end
-					for joint_name,value in pairs(real_animation.animation[start_key].joints) do
-						if not animation_output[joint_name] then
-							local bossman_remedy =value:lerp(real_animation.animation[end_key].joints[joint_name],delta) -- danm i was tired when i wrote this LMAO
-							animation_output[joint_name] = 
-							{cframe=bossman_remedy,priority=real_animation.priority,special_id = 'aliens are modifing'}
-						elseif animation_output[joint_name].priority <= real_animation.priority then							
-							local cframe = real_animation.animation[start_key].CFrame:lerp(real_animation.animation[end_key],delta)
-							if joint_name == 'Left Leg' then
-								print(cframe,'wun')
-							end
-							animation_output[joint_name] = {priority=real_animation.priority,cframe=cframe}
-						end
-					end
-					
-					if terminate then
-						running_animations[object][animations] = nil -- terminates animation
-						--run_service:UnbindFromRenderStep("Render "..object:GetFullName())
-					end
-				end
-			end
-			for obj,output in pairs(animation_output) do
-				if obj == 'Left Leg' then
-				end
-				animation_output[obj] = output.cframe
-			end
-			weld_status[object:GetFullName()] = animation_output
-		end
-	end)
-	
-	function animation.run(object,animation,looped,pseudo)
-		current_keyframe[object:GetFullName()] = current_keyframe[object:GetFullName()] or {}
-		current_keyframe[object:GetFullName()][animation] = current_keyframe[object:GetFullName()][animation] or 1
-		local strt = {}
-		if not pseudo then
-			for _,object in pairs(object.Torso:GetChildren()) do
-				if object:IsA("Motor6D") then
-					strt[object.Name] = object.C1
-				end
-			end
-		else
-			for _,obj in pairs(object:GetChildren()) do
-				if obj:IsA("BasePart") then
-					strt[obj.Name] =  object.Torso.CFrame:toObjectSpace(obj.CFrame)
-				end
-			end
-		end
-		animation_start[object:GetFullName()] = animation_start[object:GetFullName()] or {}
-		animation_start[object:GetFullName()][animation] = strt
-		
-		if not running_animations[object] then
-			running_animations[object] = {}
-		end
-		running_animations[object][animation] = {start_time=tick(),looped=looped,pseudo=pseudo}
-		run_service:BindToRenderStep("Render "..object:GetFullName(),199,function()
-			local output = weld_status[object:GetFullName()]
-			for specific_obj,cframe in pairs(output) do
-				if not pseudo then
-					object.Torso:FindFirstChild(specific_obj).C1 = cframe
-				else
-					local c0 = _assets.PlayerModel.Torso[specific_obj].C0
-					if specific_obj == 'Right Arm' or specific_obj == 'Left Arm' then
-						c0 = c0 + Vector3.new(0,1,0)
-					end
-					object:FindFirstChild(specific_obj).CFrame = object.Torso.CFrame * c0 * cframe:inverse()
-				end
-			end
-		end)
-	end
-	
-	local run_anim = event.new('server run animation')
-	local end_anim = event.new('server end animation')
-	
-	event.new('run animation'):connect(function(char,anim,looped,pseudo)
-		animation.run(char,anim,looped,pseudo)
-	end)
-	
-	event.new('stop animation'):connect(function(char,anim)
-		running_animations[get_obj(char)][anim] = nil
-		run_service:UnbindFromRenderStep('Render '..char)
-	end)
+
 end
 --('animation module has loaded')
 
@@ -385,44 +289,6 @@ end
 
 --@pseudocharacter module
 do
-	
-	event.new('move'):connect(function(char,start,finish)
-		local offset = (finish-start)
-		local magnitude
-		if offset.Y < 0 then
-			magnitude = (offset/Vector3.new(16,120,16)).Magnitude
-		else
-			magnitude = (offset/Vector3.new(1,1,1)).Magnitude
-		end
-		
-		start,finish = CFrame.new(start),CFrame.new(finish)
-		
-		local angle = CFrame.Angles(0,math.atan2(-offset.X,-offset.Z),0)
-		
-		pseudo_char_interp[char] = {start=start,finish=finish,start_time=tick(),length=magnitude,angle=angle}
-		local real_char = get_obj(char)
-		
-		animation.run(real_char,'walk',true,true)
-		
-		run_service:BindToRenderStep('Move'..char,197,function()
-			real_char:SetPrimaryPartCFrame(pseudo_char_output[char])
-		end)
-		
-	end)
-	
-	run_service:BindToRenderStep('Pseudo Charculations',196,function() -- lol
-		for char,data in pairs(pseudo_char_interp) do
-			local delta = (tick() - data.start_time)/data.length
-			if delta > 1 then
-				pseudo_char_interp[char] = nil
-				run_service:UnbindFromRenderStep('Move '..char)
-				running_animations[get_obj(char)]['walk'] = nil
-				run_service:UnbindFromRenderStep('Render '..char)
-			else
-				pseudo_char_output[char] = data.start:lerp(data.finish,delta) * data.angle
-			end
-		end
-	end)
 end
 --('pseudocharacter module loaded')
 
@@ -596,193 +462,8 @@ end
 
 local weapon_module = {}
 do
-	local _weapons = _replicated_storage.Weapons
-	
-	local secondary_weapon,meleee -- strings
-	local secondary_attachments,primary_data,secondary_data -- tables
-	
-	--load gun
-	do
-		primary_weapon = 'AK'
-		primary_attachments={Sight='Scope_MediumRange',Barrel='Compensator'}
-		secondary_weapon = 'DE'
-		secondary_attachments = {Sight='Scope_MediumRange',Barrel='Compensator'}
-		melee = 'Knife'
-	end
-	
-	-- load weapon
-	do
-		local obj_type=type
-		local function load_weapon(weapon_name,attachment,type)
-			local weapon = _weapons[type][weapon_name]:Clone()
-			weapon.Parent = _replicated_storage
-			
-			local weapon_stats = require(weapon.data)
-			weapon.data:Destroy()
-			
-			for node,attachment in pairs(attachment) do
-				local real_node = weapon:FindFirstChild(node)
-				if real_node then
-					local real_attachment = game.ReplicatedStorage.Weapons[type]:FindFirstChild(attachment)
-					if real_attachment then
-						real_attachment = real_attachment:Clone()
-						real_attachment.PrimaryPart = real_attachment[node]
-						real_attachment:SetPrimaryPartCFrame(real_node.CFrame)
-						real_attachment.PrimaryPart:Destroy()
-						real_node:Destroy()
-						for index,value in pairs(require(real_attachment.data)) do
-							if weapon_stats[index] and obj_type(weapon_stats[index])=='number' then
-								weapon_stats[index] = weapon_stats[index]+value
-							else
-								weapon_stats[index]=value
-							end
-						end
-						real_attachment.data:Destroy()
-						for _,part in pairs(real_attachment:GetChildren()) do
-							part.Parent = weapon
-						end
-						real_attachment:Destroy()
-					else
-						error('Attachment '..attachment..' does not exist')
-					end
-				else
-					error('Node '..node..' does not exist on '..weapon.Name)
-				end
-			end
-			return weapon,weapon_stats
-		end
-		
-		primary_weapon,primary_data = load_weapon(primary_weapon,primary_attachments,'Primary')
-		secondary_weapon,secondary_data = load_weapon(secondary_weapon,secondary_attachments,'Secondary')
-	end
-	
-	primary_data.full_ammo = primary_data.ammo
-	secondary_data.full_ammo = secondary_data.ammo
-	
-
-	weapon_module.current_weapon = secondary_weapon
-	weapon_module.current_weapon_data = secondary_data
-	weapon_module.current_type = 'secondary'
-	
-	-- secondary_weapon.Name
-	
-	function weapon_module.ADS(is_ads)
-		if not reloading then
-			is_aiming = is_ads
-			local current_fov = workspace.CurrentCamera.FieldOfView
-			local start = tick()
-	
-			if is_ads then
-				animation.run(_character,'aim',true)
-				running_animations[_character]['hipfire'] = nil
-				local offset = workspace.CurrentCamera.FieldOfView - weapon_module.current_weapon_data.ads_fov
-				run_service:BindToRenderStep("Aim",130,function()
-					local delta = (tick()-start) / .1
-					workspace.CurrentCamera.FieldOfView = current_fov - (offset * delta)
-					if delta >= 1 then
-						run_service:UnbindFromRenderStep("Aim")
-					end
-				end)
-			else
-				animation.run(_character,'hipfire',true)
-				running_animations[_character]['aim'] = nil
-				local offset = 70-weapon_module.current_weapon_data.ads_fov
-				run_service:BindToRenderStep("Aim",130,function()
-					local delta = (tick()-start) / .1
-					workspace.CurrentCamera.FieldOfView = current_fov + (offset * delta)
-					if delta >= 1 then
-						run_service:UnbindFromRenderStep("Aim")
-					end
-				end)
-			end
-		end
-	end
-	
-	function weapon_module.reload()
-		if is_aiming then
-			weapon_module.ADS(false)
-		end
-		if weapon_module.current_weapon_data.clip - 1 ~= 0 then
-			reloading = true
-			wait(weapon_module.current_weapon_data.reload_time)
-			reloading = false
-			weapon_module.current_weapon_data.ammo = weapon_module.current_weapon_data.full_ammo
-			weapon_module.current_weapon_data.clip = weapon_module.current_weapon_data.clip - 1
-		end
-	end
-	
-	function weapon_module.shoot()
-		if weapon_module.current_weapon_data.ammo ~= 0 then
-			local accel = 2
-			local angle = CFrame.Angles(math.rad(2),0,math.rad(math.random(-10,10)/10))
-			run_service:BindToRenderStep("Recoil",201,function()
-				print(accel)
-				if accel == 0 then
-					accel = accel - .2
-				else
-					accel = accel - .8
-				end
-				if accel <= -.3 then
-					run_service:UnbindFromRenderStep("Recoil")
-				end
-				local cam_offset = CFrame.new(0,0,0):lerp(angle,accel)
-				offset = cam_offset:lerp(CFrame.new(),.2)
-				workspace.CurrentCamera.CFrame = workspace.CurrentCamera.CFrame  * cam_offset
-			end)
-			weapon_module.current_weapon_data.ammo = weapon_module.current_weapon_data.ammo-1
-		else
-			weapon_module.reload()
-		end
-	end
-	
-	
-	
-	function weapon_module.sprint(start)
-		local walkspeed = 16
-		if start then
-			--start run anim
-			walkspeed = weapon_module.current_weapon_data.sprint_speed
-		end
-		local_player.Character.Humanoid.WalkSpeed = walkspeed
-	end
-	
-	function weapon_module.change_weapon(weapon)
-		-- switch gun anim
-		if not weapon then
-			weapon = ({primary='secondary',secondary='primary'})[weapon_module.current_type]
-
-			if weapon == 'primary' then
-				weapon_module.current_weapon = primary_weapon
-				weapon_module.current_weapon_data = primary_data
-			else
-				weapon_module.current_weapon = secondary_data
-				weapon_module.current_weapon_data = secondary_data
-			end
-			weapon_module.current_type = weapon
-		end
-	end
-	
-	local c0,c1 = _character.Torso.Head.C0,_character.Torso.Head.C1
-	
-	run_service:BindToRenderStep('Weapon render',210,function()
-		local offset = offset or CFrame.new(0,0,0)
-		for _,limb in pairs(_character:GetChildren()) do
-			if limb:IsA("BasePart") and limb.Name ~= 'Head' then
-				limb.LocalTransparencyModifier = 0
-			end
-			local vector = workspace.CurrentCamera.CFrame.lookVector
-			if not casing_mode and not idle_gun then
-				_character.Torso.Head.C0 = CFrame.Angles(math.atan2(vector.Y,math.sin(math.acos(vector.Y))),0,0) * offset  + Vector3.new(0,1.5,0)
-				_character.Torso.Head.C1 = CFrame.new(0,0,0)
-			else
-				_character.Torso.Head.C0,_character.Torso.Head.C1 = c0,c1
-			end
-		end
-	end)
 	
 end
-
-animation.run(_character,'walk',true)
 
 
 
@@ -802,6 +483,24 @@ do
 	function leave_casing()
 		local gun = _replicated_storage.Gun
 	end
+	
+	workspace.Flashbang.ChildAdded:connect(function(flashbang)
+		if (flashbang.Position-_character.Torso.Position).Magnitude < 15 then
+			_character.Humanoid.WalkSpeed = 4
+			_ui.Visible = false
+			for i = 0,1,.1 do
+				game.Lighting.ColorCorrection.Brightness = i
+				run_service.RenderStepped:wait() -- sorry
+			end
+			wait(math.random(3,5))
+			for i = 1,0,-0.01 do
+				game.Lighting.ColorCorrection.Brightness = i
+				run_service.RenderStepped:wait() -- sorry
+			end
+			_character.Humanoid.WalkSpeed = 16
+			_ui.Visible = true
+		end
+	end)
 	
 	run_service:BindToRenderStep('Game logic',170,function()
 		if has_bag and has_bag.Name == 'Interactive_Bag_ThermalBag' then
@@ -848,30 +547,30 @@ do
 					if input.KeyCode == Enum.KeyCode.R then
 						weapon_module.reload()
 					elseif input.KeyCode == Enum.KeyCode.LeftShift then
-						weapon_module.sprint(true)
-						repeat wait() until local_player.Character.Torso.Velocity.Magnitude < 1
-						weapon_module.sprint(false)
+						--weapon_module.sprint(true)
+						--repeat wait() until local_player.Character.Torso.Velocity.Magnitude < 1
+						--weapon_module.sprint(false)
 					elseif input.KeyCode == Enum.KeyCode.E then
-						weapon_module.change_weapon()
+						--weapon_module.change_weapon()
 					elseif input.KeyCode == Enum.KeyCode.One then
-						weapon_module.change_weapon('primary')
+						--weapon_module.change_weapon('primary')
 					elseif input.KeyCode == Enum.KeyCode.Two then
-						weapon_module.change_weapon('primary')
+						--weapon_module.change_weapon('primary')
 					elseif input.KeyCode == Enum.KeyCode.Q then
-						weapon_module.ADS(not is_aiming)
+						--weapon_module.ADS(not is_aiming)
 					elseif input.KeyCode == Enum.KeyCode.F then
 						interact_proxy(interact_time,'F')
 					elseif input.KeyCode == Enum.KeyCode.G then
 						attempt_drop()
 					end
 				elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
-					if weapon_module.current_weapon_data.semi_auto then
-						weapon_module.shoot()
+					--[[if weapon_module.current_weapon_data.semi_auto then
+						--weapon_module.shoot()
 					elseif weapon_module.current_weapon_data.burst then
 						if (burst_debounce or 0) <= tick() then
 							for i = 1,weapon_module.current_weapon_data.burst do
 								wait()
-								weapon_module.shoot()
+								--weapon_module.shoot()
 							end
 							burst_debounce = tick() + 60/weapon_module.current_weapon_data.rate_of_fire
 						end
@@ -882,20 +581,20 @@ do
 						local last_fired = tick()
 						shooting = true
 						run_service:BindToRenderStep('Shoot',195,function()
-							print('i swear to allah',shooting)
+							--('i swear to allah',shooting)
 							if not shooting then
 								run_service:UnbindFromRenderStep('Shoot')
 							end
 							if shooting then
 								if (tick()-last_fired) >= interval then
 									last_fired = tick()
-									weapon_module.shoot()
+									--weapon_module.shoot()
 								end
 							end
 						end)
-					end
+					end]]
 				elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
-					weapon_module.ADS(true)
+					--weapon_module.ADS(true)
 				end
 			elseif input.KeyCode == Enum.KeyCode.G then
 				_ui.OnscreenInteract.Visible = false
@@ -906,7 +605,7 @@ do
 				gun_weld.Part0 = _character['Right Arm']
 				gun_weld.Part1 = gun
 				gun.Name = 'Gun'
-				animation.run(_character,'hipfire')
+				--animation.run(_character,'hipfire')
 				if workspace.Interactive:FindFirstChild("Interactive_Bag_ThermalBag") then
 					ui_logic['Objectives']:fire("Get the thermal drill bag")
 				end
@@ -917,10 +616,10 @@ do
 	user_input_service.InputEnded:connect(function(input)
 		if input.UserInputType == Enum.UserInputType.Keyboard then
 			if input.KeyCode == Enum.KeyCode.LeftShift then
-				weapon_module.sprint(false)
+				--weapon_module.sprint(false)
 			end
 		elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
-			print('EEEEE I SWEAR TO GOD WHY DOESNT THIS FIRE')
+			--('EEEEE I SWEAR TO GOD WHY DOESNT THIS FIRE')
 			shooting = false
 			run_service:UnbindFromRenderStep('Shoot')
 		end
@@ -1043,9 +742,10 @@ do
 		local start = tick()
 		run_service:BindToRenderStep('Load number '..text_label.Name,199,function()
 			local delta = tick()-start
-			if delta < 1 then
+			if delta <= 1 then
 				text_label.Text = prefix..math.floor(number * delta)
 			else
+				text_label.Text = prefix..math.floor(number)
 				run_service:UnbindFromRenderStep('Load number '..text_label.Name)
 			end
 		end)
@@ -1061,7 +761,9 @@ do
 		if stealthed then
 			stealth_bonus = total_money  * .2
 		end
-		local result =math.max(total_money + stealth_bonus - ((heisters_in_custody * 5000) + (civilians_killed * 1000)),0)
+		local result =math.max((total_money + stealth_bonus) - ((heisters_in_custody * 5000) + (civilians_killed * 1000)),0)
+		print(result,total_money,((heisters_in_custody * 5000) + (civilians_killed * 1000)))
+		
 		
 		_ui.Visible = false
 		wait(1)

@@ -1094,8 +1094,13 @@ do
 	local gun_fired = event.new('shoot')
 	
 	
+	local amnt=0
+	
 	while wait(.1) do -- main loop, will handle everythin
-		
+		--dampen laughing gas
+		for i,v in pairs(workspace["Laughing gas"]:GetChildren()) do
+			v.exit.ParticleEmitter.Rate = math.max(v.exit.ParticleEmitter.Rate-0.5,0)
+		end
 		-- weapons loop
 		do
 			for npc_firing,data in pairs(enemies_firing) do

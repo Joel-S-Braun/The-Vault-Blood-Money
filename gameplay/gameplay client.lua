@@ -40,6 +40,7 @@ local delta = {}
 local mathf = {}
 local weapon = {}
 local animations = {}
+local skills = {}
 local remote_functions
 
 local anim_render_dist = 90
@@ -299,6 +300,7 @@ end
 
 --@skills
 do
+	skills['laughing gas'] = true
 end
 
 
@@ -606,10 +608,34 @@ do
 		part:ClearAllChildren()
 		part.Material = 'Plastic'
 	end)
+	
+	local in_system = 0
+
+	game:GetService('RunService'):BindToRenderStep('laughing gas effect',201,function()
+		local total_dist = 0
+		local total_count = 0
+		for i,v in pairs(workspace['Laughing gas']:GetChildren()) do
+			total_count = total_count + 1
+			total_dist = (total_dist + (1/(v.exit.Position-game.Players.LocalPlayer.Character.Torso.Position).Magnitude^1.5) / (60/v.exit.ParticleEmitter.Rate))
+		end
+		in_system = math.min(1,(in_system * 0.998) + (total_dist * 0.2)) / total_count
+		print(total_count,in_system,total_dist,'WOOTUH')
+		local v = math.abs(math.sin(tick())^2)
+		local d = 1-v 
+		game.Lighting.ColorCorrection.TintColor = Color3.new((v * in_system) - (in_system-1) ,(d * in_system) - (in_system-1),1)
+		game.Lighting.ColorCorrection.Saturation = math.sin(tick()/3) * in_system
+		game.Lighting.ColorCorrection.Contrast = ((math.abs(math.sin(tick()/3))/2) + 0.2) * in_system
+		print(math.cos(tick()),tick())
+		workspace.CurrentCamera.CFrame = workspace.CurrentCamera.CFrame * CFrame.Angles(math.sin((tick()))/(120 / in_system),math.cos(tick())/(120 /in_system),0)
+	end)
 
 	receive_open_door:connect(function(door)
 		id = 'Open door '..math.random()
-		local desired = math.rad(math.random(70,120))
+		local val = 90
+		if door:FindFirstChild("desired") then
+			val = door.desired.Value
+		end
+		local desired = math.rad(math.random(val-20,val+20))
 		delta.set(id)
 		run_service:BindToRenderStep(id,201,function()
 			local delta = math.min(delta.get(id) * 3,1)
@@ -624,7 +650,11 @@ do
 
 	receive_close_door:connect(function(door)
 		id = 'Open door '..math.random()
-		local desired = math.rad(math.random(70,120))
+			local val = 90
+		if door:FindFirstChild("desired") then
+			val = door.desired.Value
+		end
+		local desired = math.rad(math.random(val-20,val+20))
 		delta.set(id)
 		run_service:BindToRenderStep(id,201,function()
 			local delta = 1-math.min(delta.get(id) * 3,1)

@@ -474,7 +474,7 @@ do
 		local is_interactive,class,name
 		if model and model.Parent.Parent then
 			if (model.Parent.Parent == workspace.Interactive) then
-				return model.Parent.Name,model.Name,mod3l
+				return model.Parent.Name,model.Name,model
 			elseif model:IsDescendantOf(workspace.Interactive) then
 				return get_interactive_data(model.Parent) -- if its inside model ski recursive
 			end
@@ -501,7 +501,7 @@ do
 			local target = mouse.Target or workspace.Buildings.SkyFog
 			if target and not interacting then  
 				if last_mouse_hit~= target then
-					local class,name=get_interactive_data(target)
+					local class,name,target=get_interactive_data(target)
 					local set_parent
 					if class then
 						global_class = class
@@ -571,7 +571,7 @@ do
 	function attempt_drop()
 		if has_bag then
 			_ui.OnscreenInteract.Visible = false
-			interact:fire('Bag',has_bag.Name);
+			interact:fire('Bag',has_bag);
 			has_bag = nil
 		end
 	end

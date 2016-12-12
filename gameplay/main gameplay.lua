@@ -182,6 +182,80 @@ end
 
 
 
+--@networking/events
+do
+	_network.RemoteEvent.OnServerEvent:connect(function(plr,name,...)
+		local event = named_events[name]
+		if event then
+			for i,v in pairs(event.connections) do
+				if type(v) == 'function' then
+					v(plr,...)
+				else
+					v:fire(plr,...)
+				end
+			end
+		end
+	end)
+
+	_network.RemoteFunction.OnServerInvoke = function(player,name,...)
+		return remote_functions[name](player,...)
+	end
+
+	function event.new(name)
+		local event = {connections={}}
+		function event:fire(...)
+			--'send232')
+			if name then
+				--'sent')
+				_network.RemoteEvent:FireAllClients(name,...)
+			end
+			for  x = 1,#event.connections do
+				if type(event.connections[x]) == 'function' then
+					event.connections[x](...)
+				else
+					event.connections[x]:fire(...)
+				end
+			end
+		end
+		function event:connect(func)
+			event.connections[#event.connections+1] = func
+		end
+		function event:condition(new_event,condition)
+			event:connect(function(...) local output = {condition(...)} 
+				if output[1] then new_event:fire(unpack(output)) end end)
+		end
+		if name then
+			--'ok',name)
+			named_events[name] = event
+		end
+		return event
+	end
+	
+	remote_functions['Ping'] = function(time)
+		return time,tick()
+	end
+end
+--'networking crap loaded')
+
+local objectives = event.new('Objectives')
+sound = event.new()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -356,7 +430,35 @@ do
 			wall:Destroy()
 		end
 	end
-	plont_c4(workspace.c4)
+
+	event.new('player shoot'):connect(function(_,hit,pos,norm)
+		print(hit,pos,norm)
+		pos = vector.lock_on_grid(pos,1)
+		print(pos)
+		if norm.Y== 0 then
+			if hit and hit:IsA('Part') and hit.Material.Value == Enum.Material.Concrete.Value then
+				cframe.set_norm(hit,-norm)
+				local min_size = math.min(hit.Size.X,hit.Size.Y)
+				if min_size >= .5 then
+					hit.Transparency = 1
+					create_hole(hit,.5,CFrame.new(pos),.5)
+					local p = Instance.new('Part',workspace)
+					p.Anchored = true
+					p.Size = Vector3.new(.2,.2,.2)
+					p.CFrame = CFrame.new(pos)
+					game.Debris:AddItem(p,.4)
+					hit:Destroy()
+				elseif math.max(hit.Size.X,hit.Size.Y,hit.Size.Z) <= .5 then
+					print('bruck up da ting')
+					hit:Destroy()
+				end
+			--else
+				--local p = Instance.new('Part',workspace)
+				--p.Anchored = true
+				--p.CFrame = CFrame.new(pos)
+			end
+		end
+	end)
 end
 
 
@@ -422,63 +524,6 @@ end
 
 
 
---@networking/events
-do
-	_network.RemoteEvent.OnServerEvent:connect(function(plr,name,...)
-		local event = named_events[name]
-		if event then
-			for i,v in pairs(event.connections) do
-				if type(v) == 'function' then
-					v(plr,...)
-				else
-					v:fire(plr,...)
-				end
-			end
-		end
-	end)
-
-	_network.RemoteFunction.OnServerInvoke = function(player,name,...)
-		return remote_functions[name](player,...)
-	end
-
-	function event.new(name)
-		local event = {connections={}}
-		function event:fire(...)
-			--'send232')
-			if name then
-				--'sent')
-				_network.RemoteEvent:FireAllClients(name,...)
-			end
-			for  x = 1,#event.connections do
-				if type(event.connections[x]) == 'function' then
-					event.connections[x](...)
-				else
-					event.connections[x]:fire(...)
-				end
-			end
-		end
-		function event:connect(func)
-			event.connections[#event.connections+1] = func
-		end
-		function event:condition(new_event,condition)
-			event:connect(function(...) local output = {condition(...)} 
-				if output[1] then new_event:fire(unpack(output)) end end)
-		end
-		if name then
-			--'ok',name)
-			named_events[name] = event
-		end
-		return event
-	end
-	
-	remote_functions['Ping'] = function(time)
-		return time,tick()
-	end
-end
---'networking crap loaded')
-
-local objectives = event.new('Objectives')
-sound = event.new()
 
 
 
@@ -519,6 +564,25 @@ do
 	local class = {}
 	
 	local picked_up_drill
+	
+	
+	
+	
+	--door
+	do
+		class.Door = {}
+		function class.Door:is_interactive(plr,obj)
+			local time = 1 + math.random()
+			if obj:FindFirstChild("Heavy") then
+				time = 3 + math.random()
+			end
+			return {'pick lock',true,time}
+		end
+		
+		function class.Door:interact(plr,obj)
+			obj:Destroy()
+		end
+	end
 
 
 	-- bag
@@ -547,6 +611,7 @@ do
 					picked_up_drill = true
 					objectives:fire('Take your bag to the vault')
 				end
+				print(obj,'n15')
 				bags_state[obj.Name] = plr
 				obj.CanCollide = false
 				local weld = Instance.new('ManualWeld',plr)
@@ -648,16 +713,14 @@ do
 
 	remote_functions['interactive'] = function(plr,spec_class,object)
 		if plr.Character.Humanoid.Health > 0  and plr.Character:FindFirstChild('Torso') then
-			return class[spec_class]:is_interactive(plr.Character,workspace.Interactive:FindFirstChild(object))
+			return class[spec_class]:is_interactive(plr.Character,object)
 		end
 	end
 
 	event.new('interact'):connect(function(plr,spec_class,object,...) 
 		if plr.Character.Humanoid.Health > 0  and plr.Character:FindFirstChild('Torso') then
-			if class[spec_class]:is_interactive(plr.Character,workspace.Interactive:FindFirstChild(object),...) then
-				local obj = workspace.Interactive:FindFirstChild(object)
-						
-				class[spec_class]:interact(plr,obj)
+			if class[spec_class]:is_interactive(plr.Character,object,...) then
+				class[spec_class]:interact(plr,object,...)
 			end
 		end
 	end)
@@ -877,6 +940,13 @@ do
 	local narration = event.new('narration')
 	local police_assault = event.new('police assault')
 	local spotted = event.new('Spotted')
+	local broke_light = event.new('Broke light')
+	local client_broke_light = event.new('Client broke light')
+	
+	broke_light:connect(function(_,light)
+		client_broke_light:fire(light) -- so that clients can all locally render
+	end)
+	
 	
 	workspace.Interactive.BagArea.Touched:connect(function(hit)
 		if hit:FindFirstChild("Money") then

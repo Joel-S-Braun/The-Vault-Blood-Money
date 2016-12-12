@@ -432,9 +432,7 @@ do
 	end
 
 	event.new('player shoot'):connect(function(_,hit,pos,norm)
-		print(hit,pos,norm)
 		pos = vector.lock_on_grid(pos,1)
-		print(pos)
 		if norm.Y== 0 then
 			if hit and hit:IsA('Part') and hit.Material.Value == Enum.Material.Concrete.Value then
 				cframe.set_norm(hit,-norm)
@@ -562,25 +560,55 @@ end
 --@interaction module
 do
 	local class = {}
+
+	local opened_doors = {}
 	
 	local picked_up_drill
+	local client_open_door = event.new('Client open door')
+	local client_close_door = event.new('Client close door')
 	
-	
-	
+	--[[if door.Name == 'Opened' then
+				client_close_door:fire(obj)
+				door.Name = 'Closed'
+				opened_doors[door] = true
+			elseif door.Name == 'Closed' then
+				client_open_door:fire(obj)
+				door.Name = 'Opened'
+				opened_doors[door] = nil]]
 	
 	--door
 	do
+
 		class.Door = {}
-		function class.Door:is_interactive(plr,obj)
+		function class.Door:is_interactive(plr,door)
 			local time = 1 + math.random()
-			if obj:FindFirstChild("Heavy") then
-				time = 3 + math.random()
+
+			if door.Name == 'Opened' then
+				return {'close door',true,0.5}
+			elseif door.Name == 'Closed' then
+				return {'open door',true,0.5}
+			else
+				if door.Name == 'Heavy' then
+					time = time + 2
+				end
+				return {'pick lock',true,time}
 			end
-			return {'pick lock',true,time}
 		end
 		
-		function class.Door:interact(plr,obj)
-			obj:Destroy()
+		function class.Door:interact(plr,door)
+			if door.Name == 'Opened' then
+					client_close_door:fire(door)
+					door.Name = 'Closed'
+					opened_doors[door] = true
+				elseif door.Name == 'Closed' then
+					client_open_door:fire(door)
+					door.Name = 'Opened'
+					opened_doors[door] = nil
+				else
+				client_open_door:fire(door)
+				opened_doors[door] = true
+				door.Name = 'Opened'
+			end
 		end
 	end
 
@@ -853,11 +881,6 @@ do
 		local second_nearest_node
 		for i,v in pairs(workspace['A*']:GetChildren()) do
 			if not nearest_node or nearest_mag > (v.Position-pos).Magnitude then
-				--if not second_nearest_node or (second_nearest_node == v) then
-					--(nearest_node)
-					--second_nearest_mag = nearest_mag
-					--second_nearest_node = nearest_node
-				--end
 				nearest_mag = (v.Position-pos).Magnitude
 				nearest_node = v
 			elseif (not second_nearest_node or second_nearest_mag > (v.Position-pos).Magnitude) then
@@ -940,13 +963,24 @@ do
 	local narration = event.new('narration')
 	local police_assault = event.new('police assault')
 	local spotted = event.new('Spotted')
+
+
 	local broke_light = event.new('Broke light')
 	local client_broke_light = event.new('Client broke light')
+
+	local broke_glass = event.new('Broke glass')
+	local client_broke_glass = event.new('Client broke glass')
 	
 	broke_light:connect(function(_,light)
 		client_broke_light:fire(light) -- so that clients can all locally render
 	end)
 	
+	broke_glass:connect(function(_,glass)
+		client_broke_glass:fire(glass)
+		--wait()
+		--glass:Destroy() -- for vaulting maybe?
+	end)
+
 	
 	workspace.Interactive.BagArea.Touched:connect(function(hit)
 		if hit:FindFirstChild("Money") then

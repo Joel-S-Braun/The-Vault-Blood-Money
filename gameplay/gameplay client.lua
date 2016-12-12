@@ -536,7 +536,7 @@ do
 			interacting = true
 			local obj = last_mouse_hit
 			_character.Humanoid.WalkSpeed = 0
-			for i = 0,1,(1/60) /time do
+			for i = 0,1,(1/60) /time do -- use bind
 				interact_ui.Text.Frame.Size = UDim2.new(i,0,1,0)
 				run_service.RenderStepped:wait()
 				if (not user_input_service:IsKeyDown(Enum.KeyCode[key])) and true then
@@ -597,9 +597,80 @@ do
 	local picked_up_thermalbag
 	local picked_up_money_bag
 	
+	local recieve_broken_light = event.new('Client broke light')
+	local recieve_broken_glass = event.new('Client broke glass')
+	local receive_open_door = event.new('Client open door')
+	local receive_close_door = event.new('Client close door')
+
+	recieve_broken_light:connect(function(part)
+		part:ClearAllChildren()
+		part.Material = 'Plastic'
+	end)
+
+	receive_open_door:connect(function(door)
+		id = 'Open door '..math.random()
+		local desired = math.rad(math.random(70,120))
+		delta.set(id)
+		run_service:BindToRenderStep(id,201,function()
+			local delta = math.min(delta.get(id) * 3,1)
+			
+			door:SetPrimaryPartCFrame(CFrame.Angles(0,math.sin(delta * desired) * math.pi/2,0) + door.PrimaryPart.Position)
+
+			if delta >= 1 then
+				run_service:UnbindFromRenderStep(id)
+			end
+		end)
+	end)
+
+	receive_close_door:connect(function(door)
+		id = 'Open door '..math.random()
+		local desired = math.rad(math.random(70,120))
+		delta.set(id)
+		run_service:BindToRenderStep(id,201,function()
+			local delta = 1-math.min(delta.get(id) * 3,1)
+			
+			door:SetPrimaryPartCFrame(CFrame.Angles(0,math.sin(delta * desired) * math.pi/2,0) + door.PrimaryPart.Position)
+
+			if delta <= 0 then
+				run_service:UnbindFromRenderStep(id)
+			end
+		end)
+	end)
+	
+	recieve_broken_glass:connect(function(part)
+		print('rasclart')
+		local w1 = Instance.new('WedgePart')
+		local w2 = Instance.new('WedgePart')
+
+		w1.Size = part.Size
+		w2.Size = part.Size
+
+		w1.Transparency = part.Transparency
+		w2.Transparency = part.Transparency
+
+		w1.BrickColor = part.BrickColor
+		w2.BrickColor = part.BrickColor
+
+		w1.Velocity = workspace.CurrentCamera.CFrame.lookVector * 20
+		w2.Velocity = workspace.CurrentCamera.CFrame.lookVector * 20
+
+		w1.Parent = workspace
+		w2.Parent = workspace
+	
+		w1.CFrame = part.CFrame
+		w2.CFrame = part.CFrame * CFrame.Angles(math.rad(180),0,0)
+		
+		
+
+		part:Destroy()
+
+	end)
+	
 	function leave_casing()
 		local gun = _replicated_storage.Gun
 	end
+	
+
 	
 	workspace.Flashbang.ChildAdded:connect(function(flashbang)
 		if (flashbang.Position-_character.Torso.Position).Magnitude < 15 then
@@ -660,13 +731,8 @@ do
 
 	local dest_env = event.new('player shoot')
 	local break_light = event.new('Broke light')
-	local recieve_broken_light = event.new('Client broke light')
-
-	recieve_broken_light:connect(function(part)
-		part:ClearAllChildren()
-		part.Material = 'Plastic'
-		
-	end)
+	local shatter_glass = event.new('Broke glass')
+	
 
 	local function shoot()
 		--if not reloading then
@@ -679,6 +745,10 @@ do
 						dest_env:fire(hit,pos,norm)
 					elseif hit:IsDescendantOf(workspace.Lights) then
 						break_light:fire(hit)
+					elseif math.floor(hit.Transparency)~=hit.Transparency and (math.min(hit.Size.X,hit.Size.Y,hit.Size.Z) <= 1.5) then
+						print('brapalap')
+						shatter_glass:fire(hit)
+						
 					end
 				end
 				

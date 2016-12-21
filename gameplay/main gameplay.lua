@@ -12,7 +12,7 @@ local _replicated_storage = game.ReplicatedStorage
 local _assets = _replicated_storage.Assets
 local _network = _replicated_storage.Network
 local _room = workspace.Rooms.room
-local _free = workspace.free
+local _free = workspace.Rooms.free
 
 local pathfinding_service = game:GetService('PathfindingService')
 
@@ -28,13 +28,14 @@ local downed_players = {}
 local behavior_matrix = {}
 local brain = {communication={},interaction={}}
 local layers = {_assets.layer1,_assets.layer2,_assets.layer3}
-local ignore = {workspace.Ignore_Folder,workspace.ActivePoints,workspace.SWAT,workspace["Guard spots"],workspace.Guards,workspace.Civilians,workspace["A*"],workspace.AmbushSpot,workspace["Tear gas spots"]}
+local ignore = {workspace.Ignore_Folder,workspace.ActivePoints,workspace.Interactive.Civilian,workspace["Guard spots"],workspace.Guards,workspace.Civilians,workspace["A*"],workspace.AmbushSpot,workspace["Tear gas spots"]}
 local interaction_list = {}
 local named_events = {}
 local pseudo_character = {}
 local total = {}
 local matrix = {}
 local cuffed_npcs = {}
+local emotions = {}
 local blacked_out_npcs = {}
 local nodes = {}
 local enemies_firing = {}
@@ -69,6 +70,24 @@ end
 local function raycast(start,finish,ignorelist)
 	local ray = Ray.new(start,finish-start)
 	return workspace:FindPartOnRayWithIgnoreList(ray,ignorelist or ignore)
+end
+
+local specific = {see={'heister','sgunshot','dead_body','suspicious','scared_civ'},hear={'hgunshot','scream'},smell={'laughing_gas','tear_gas'},feel={'torso_pain','legs_pain','head_pain'},}
+--									pain sadness fear
+local desired = {heister=Vector3.new(0.5,  0.5,   3),dead_body=Vector3.new(.5,3,3),sgunshot=Vector3.new(0.5,.5,5),suspicious=Vector3.new(0.5,0.5,1),scared_civ=Vector3.new(0.5,0.5,2),
+	hgunshot=Vector3.new(0.5,0.5,3),scream=Vector3.new(0.5,0.5,1),laughing_gas=Vector3.new(0,-10,-2),tear_gas=Vector3.new(1,.6,1),
+	torso_pain=Vector3.new(2,.6,1),legs_pain=Vector3.new(1.5,.6,1),head_pain=Vector3.new(3,.6,2)}
+
+local val = Vector3.new(.5,.5,.5)
+
+
+
+local function clone(t)
+	local new = {}
+	for i,v in pairs(t) do
+		new[i]=v
+	end
+	return new
 end
 
 local function get_obj(real_model)
@@ -107,6 +126,29 @@ local function cone_vision(start,finish,ignorelist)
 	end
 end
 
+local function add_new_stimulant(name,obj)
+	local specific = workspace.Stimulant[name]
+	local value
+	for i,v in pairs(specific:GetChildren()) do
+		if (not v.Value) or (v.Value == obj) then
+			value = v
+			break
+		end
+	end
+	value = value or Instance.new('ObjectValue')
+	value.Parent = specific
+	value.Name = obj.Name
+	value.Value = obj
+end
+
+local function remove_stimulant(name,obj)
+	local specific = workspace.Stimulant[name]
+	for i,v in pairs(specific:GetChildren()) do
+		if v.Value == obj then
+			v.Value = nil
+		end
+	end
+end
 
 
 
@@ -123,7 +165,7 @@ do
 	end
 	
 	function vector.lock_on_grid(vector,amnt)
-		return Vector3.new(math.floor((vector.X * (1/amnt)) + 0) * amnt,math.floor((vector.Y * (1/amnt))+0) * amnt,math.floor((vector.Z * (1/amnt)) * amnt)+0)
+		return Vector3.new(math.floor((vector.X * (1/amnt)) + 0.5) * amnt,math.floor((vector.Y * (1/amnt))+0.5) * amnt,math.floor((vector.Z * (1/amnt)) * amnt)+0.5)
 	end 
 	
 	function vector.random(radius)
@@ -222,7 +264,7 @@ do
 		end
 		function event:condition(new_event,condition)
 			event:connect(function(...) local output = {condition(...)} 
-				if output[1] then new_event:fire(unpack(output)) end end)
+				if output[1] then new_event:fire(...) end end)
 		end
 		if name then
 			--'ok',name)
@@ -238,6 +280,7 @@ end
 --'networking crap loaded')
 
 local objectives = event.new('Objectives')
+local call_police = event.new()
 sound = event.new()
 
 
@@ -262,14 +305,17 @@ sound = event.new()
 
 --@destruction module
 do
-	function create_hole(wall,radius,pos,thick,layers,offset_value,angle)
+	function create_hole(wall,real_radius,pos,thick,layers,offset_value,angle)
 		--local angle = angle or CFrame.Angles(math.rad(math.random(2)*180),0,math.rad(math.random(2)*180))
 		offset_value = offset_value or 0
 		local broken_folder = Instance.new('Folder')
 		broken_folder.Parent = workspace.Broken
 		broken_folder.Name = wall.Parent.Name
 		
-		local radius = math.min(radius,wall.Size.X/2,wall.Size.Y/2)
+		local radius = math.min(real_radius,wall.Size.X/2,wall.Size.Y/2) -- ENABLE THIS FOR CLAMPING
+		if real_radius ~= radius then
+			return
+		end
 		local offset = vector.offset_clamp(wall.CFrame:toObjectSpace(pos).p,wall.Size,radius*2)
 		
 		local top_size = Vector3.new(wall.Size.X,(wall.Size.Y/2)-(offset.Y + radius),wall.Size.Z)
@@ -297,7 +343,7 @@ do
 		if 0.01 > (top_size.Y) then
 			p:Destroy()
 		elseif 0.2 > (top_size.Y) then
-			print(top_size.Y)
+			--print(top_size.Y)
 			local mesh =Instance.new('BlockMesh')
 			mesh.Parent = p
 			mesh.Scale = Vector3.new(1,top_size.Y/.2,1)
@@ -315,7 +361,7 @@ do
 		if 0.01 > (bottom_size.Y) then
 			p:Destroy()
 		elseif 0.2 > (bottom_size.Y) then
-			print(bottom_size.Y)
+			--print(bottom_size.Y)
 			local mesh =Instance.new('BlockMesh')
 			mesh.Parent = p
 			mesh.Scale = Vector3.new(1,bottom_size.Y/.2,1)
@@ -348,7 +394,7 @@ do
 		
 		local x_y = CFrame.new(offset.X,offset.Y,0)
 		local layers_deep = math.max(math.ceil(wall.Size.Z/thick)+offset_value,1)
-		--local real_layer_count = math.max(math.ceil(layers_deep / thick),1)
+		local real_layer_count = math.max(math.ceil(layers_deep / thick),1)
 		
 		if (wall.Size.Z%thick) < .2 then
 			layers_deep = math.max(layers_deep-1,1)
@@ -382,7 +428,8 @@ do
 				part.Material = wall.Material
 				part.Parent = broken_folder
 				part.Size = Vector3.new(radius*2,radius*2,thickness)
-				part.CFrame = (wall.CFrame * x_y * CFrame.new(0,0,(wall.Size.Z-thickness)/2 - (thick * (layer-offset_value-1)))) * CFrame.Angles(math.rad(math.random(2)*180),0,math.rad(math.random(2)*180)) -- angle
+				part.CFrame = (wall.CFrame * x_y * CFrame.new(0,0,(wall.Size.Z-thickness)/2 - (thick * (layer-offset_value-1)))) * 
+					CFrame.Angles(math.rad(math.random(2)*180),0,math.rad(math.random(2)*180)) -- angle
 			end
 		end
 		return angle
@@ -432,9 +479,12 @@ do
 	end
 
 	event.new('player shoot'):connect(function(_,hit,pos,norm)
+		--print('man just bussed a skeng')
 		pos = vector.lock_on_grid(pos,1)
-		if norm.Y== 0 then
-			if hit and hit:IsA('Part') and hit.Material.Value == Enum.Material.Concrete.Value then
+		--print(norm)
+		if math.floor((norm.Y*10000) + 0.5)== 0 then
+			--print('dun kno')
+			if hit and hit:IsA('Part') then
 				cframe.set_norm(hit,-norm)
 				local min_size = math.min(hit.Size.X,hit.Size.Y)
 				if min_size >= .5 then
@@ -447,7 +497,7 @@ do
 					game.Debris:AddItem(p,.4)
 					hit:Destroy()
 				elseif math.max(hit.Size.X,hit.Size.Y,hit.Size.Z) <= .5 then
-					print('bruck up da ting')
+					--print('bruck up da ting')
 					hit:Destroy()
 				end
 			--else
@@ -490,6 +540,14 @@ do
 		char.Name = plr.Name
 		plr.Character = char
 		char.Parent = workspace.Heisters
+		
+		local gunshot = Instance.new('Sound')
+		gunshot.SoundId = 'rbxassetid://356911785'
+		gunshot.Name = 'Shoot'
+		gunshot.Parent = char.Torso
+		
+		add_new_stimulant('heister',char.Head)
+		add_new_stimulant('hgunshot',gunshot)
 	end)
 end
 
@@ -512,9 +570,218 @@ end
 
 
 
--- COMPLETE AI MODULE
+
+
+
+--@AI module
 do
+	
+	local update_emotions = event.new('update emotions')
+	update_emotions:connect(function(npc,emotion)
+		emotions[npc]=emotion
+	end)
+	
+	local function sigmoid(t)
+		return 1/(math.exp(-t)+1)
+	end
+
+	function create_ai_model(tolerance,perceptor,brain,npc)
+
+		local terminate
+
+		local concious = 1
+		
+		local sensory = {}
+		local delta = {}
+		
+		local short_term = {}
+		local long_term = {}
+		local to_long = {}
+		
+		local memory = {}
+		
+		setmetatable(memory,{
+				__newindex = function(t,i,v)
+					local to_long_val = (delta[i] or -6)
+					if to_long_val then
+						to_long[i] = (delta[i] or -6)
+					end
+					short_term[i]={v=v,t=tick()}
+					long_term[i] = nil
+				end,
+				__index = function(t,i)
+					if short_term[i] then
+						if ((tick()-5) > short_term[i].t) then
+							--print('sok ye mom bled')
+							if sigmoid((to_long[i] or -6) * (concious/2 + 0.5))>math.random() then
+								--print(i,':',short_term[i].v,'has been inscribed into long term memory')
+								long_term[i]=short_term[i]
+								short_term[i]=nil
+								return long_term[i].v
+							else
+								--print(i,':',short_term[i].v,'has been destroyed from short term memory')
+								short_term[i]=nil
+								return nil
+							end
+						else
+							to_long[i] = (to_long[i] or -6) + .5
+							return short_term[i].v
+						end
+					elseif long_term[i] then
+						return long_term[i].v
+					end
+				end
+			}
+		)
+		
+		local function get_avg(v)
+			local total = Vector3.new()
+			for i,v in pairs(specific[v]) do
+				local additional = 	(desired[v]- Vector3.new(.5,.5,.5)) * sigmoid(delta[v] * tolerance) + Vector3.new(.5,.5,.5)
+				total = total + additional
+			end
+			return total/#specific[v]
+		end
+		
+		local val = Vector3.new(.5,.5,.5)
+		
+		for i,v in pairs(desired) do
+			delta[i] = -6
+		end
+		
+		local total = Vector3.new()
+		for i,v in pairs(specific) do
+			sensory[i] = get_avg(i)
+			total = total + sensory[i]
+		end
+		total = total/4
+
+		spawn(function()
+			while not terminate do
+				perceptor(delta,concious,memory,npc) -- ski
+				for i,v in pairs(delta) do
+					if sigmoid(v) then
+						if v > (memory[i] or -6) then
+							memory[i]=v
+							to_long[i]=v
+						end
+					end
+				end
+	
+				wait(1.2-concious)
+
+				local total = Vector3.new()
+				for i,v in pairs(specific) do
+					sensory[i] = get_avg(i)
+					total = total + sensory[i]
+				end
+				total = total/4
+				
+				val = val:lerp(total,sigmoid( ((total-Vector3.new(0.5,0.5,0.5)) .Magnitude -.5) * 6 ) ^ 1.2)
+				
+				local old_value = emotions[npc] or Vector3.new(0.5,0.5,0.5)
+				if (old_value-val).Magnitude > 0.05 then
+					--print('aaah!')
+					update_emotions:fire(npc,val,concious)
+				end
+				
+				
+				brain(val,memory,npc)
+			end
+		end)
+
+		return function()
+			terminate = true
+		end
+	end
+	local function civilian(em,mem,npc)
+		-- X = pain, Y = sadness, Z = fear. goes from 0-1, 0.5 being default
+		print(em)
+		spawn(function()
+			if ((((em.Z - 0.55) * 4) + sigmoid(mem.scared_civ or -6))) > math.random() then	-- "ok, something feels suspicious"
+				if not npc:FindFirstChild("can_call") then
+					
+					if (em.Y+em.Z)/4 < math.random() and not npc.head.Sound.IsPlaying then
+						npc.Head.Sound.TimePosition = 3.2
+						npc.Head.Sound:Resume()
+					end
+					
+					print((not mem.running_away) and (not cuffed_npcs[npc]))
+					
+					if npc.Name == 'Moving' then
+						print('wow, lad.')
+						npc.Humanoid:MoveTo(cuffed_npcs[npc].Torso.Position + (CFrame.new(cuffed_npcs[npc].Torso.Position,npc.Torso.Position).lookVector*5))
+					elseif em.Z > 0.7 then -- ok fuck this if u move ull die
+						print('DROP DOWN MY JIGGA')
+						npc.Humanoid:MoveTo(npc.Torso.Position)
+						mem.running_away = nil
+					elseif (not mem.running_away) and (not cuffed_npcs[npc]) then
+						mem.running_away = npc.Humanoid.WalkToPoint -- so it remembers that mr civ is running away
+						add_new_stimulant('scared_civ',npc.Torso)
+						print('RUUUUUUUUUUN')
+						follow_path(npc,{workspace.Rooms.Part.Position,workspace.Rooms.free.Position + Vector3.new(math.random(-workspace.Rooms.free.Size.X/4,workspace.Rooms.free.Size.X/4),0,0)},mem)
+					end
+				else
+					call_police:fire()
+				end
+			end
+		end)
+	end
+	
+	local function perceptor(delta,concious,memory,npc)
+		for i,v in pairs(delta) do
+			delta[i] = math.max( ((v + 6) * 0.3) - 6,-6)
+		end
+		for i,sense in pairs(specific.see) do
+			local tab = workspace.Stimulant[sense]
+			for i,v in pairs(tab:GetChildren()) do
+				if v.Value then
+					local ray = Ray.new(npc.Head.Position,CFrame.new(npc.Head.Position,v.Value.Position).lookVector*300)
+					local hit,pos=workspace:FindPartOnRay(ray,npc)
+					if hit == v.Value then
+						delta[sense] = delta[sense] + (concious * 8)
+						print(delta[sense],i)
+					end
+				end
+			end
+		end
+		for i,sense in pairs(specific.hear) do
+			local tab = workspace.Stimulant[sense]
+			for i,v in pairs(tab:GetChildren()) do
+				if v.Value then
+					if v.Value.Playing then
+						if tostring((((v.Value.PlaybackLoudness) * v.Value.Volume * 10) /  math.max((npc.Head.Position-v.Value.Parent.Position).Magnitude^1.2,1)) - 6) ~= 'nan' then
+							delta[sense] = ((v.Value.Volume * 200) /  math.max((npc.Head.Position-v.Value.Parent.Position).Magnitude^1.2,1)) - 6
+							--print(delta[sense])
+						end
+					else
+						delta[sense] = -6
+					end
+				end
+			end
+		end
+		for i,sense in pairs(specific.smell) do
+			local tab = workspace.Stimulant[sense]
+			for i,v in pairs(tab:GetChildren()) do
+				if v.Value then
+					delta[sense] = -(1/math.max((npc.Head.Position-v.Value.Position).Magnitude,1))/6 + 6
+					--print(delta[sense],'control the game whenver he snap')
+				end
+
+			end
+		end -- ik gross copy and paste :(
+	end
+	--print('usual standard BLED')
+	for i,v in pairs(workspace.Interactive.Civilian:GetChildren()) do
+		if v.Name == 'Civilian' then
+			create_ai_model(1,perceptor,civilian,v) -- REPLACE SKI
+		end
+	end
 end
+
+
+
+
 
 
 
@@ -576,6 +843,33 @@ do
 				door.Name = 'Opened'
 				opened_doors[door] = nil]]
 	
+	--civilian
+	do
+		class.Civilian = {}
+		function class.Civilian:is_interactive(plr,civ)
+			if civ.Name == 'Civilian' then
+				cuffed_npcs[civ] = true
+				return {'cuff civilian',true,2}
+			elseif civ.Name == 'Cuffed' then
+				cuffed_npcs[civ] = plr
+				return {'move civliian',true,0.2}
+			elseif civ.Name == 'Moving' then
+				return {'stop moving civilian',true,0.2}
+			end
+		end
+		
+		function class.Civilian:interact(plr,civ)
+			if civ.Name == 'Civilian' then
+				civ.Humanoid:MoveTo(civ.Torso.Position)
+				civ.Name = 'Cuffed'
+			elseif civ.Name == 'Cuffed' then
+				civ.Name = 'Moving'
+			elseif civ.Name == 'Moving' then
+				civ.Name = 'Cuffed'
+			end
+		end
+	end
+	
 	--door
 	do
 
@@ -612,7 +906,6 @@ do
 		end
 	end
 
-
 	-- bag
 	do
 		local bags_state = {}
@@ -635,11 +928,11 @@ do
 		function class.Bag:interact(plr,obj)
 			plr = plr.Character
 			if not bags_state[obj.Name] and not welds[plr.Name] then
-				if obj.Name == 'Interactive_Bag_ThermalBag' and not picked_up_drill then
+				if obj.Name == 'ThermalBag' and not picked_up_drill then
 					picked_up_drill = true
 					objectives:fire('Take your bag to the vault')
 				end
-				print(obj,'n15')
+				--print(obj,'n15')
 				bags_state[obj.Name] = plr
 				obj.CanCollide = false
 				local weld = Instance.new('ManualWeld',plr)
@@ -664,26 +957,25 @@ do
 		
 		class.Drill = {}
 		function class.Drill:is_interactive(plr,obj)
-			if (obj).Name == 'Interactive_Drill_Bag' then
+			if (obj).Name == 'ThermalBag' then
 				return {'set up drill',true,1}
-			elseif (obj).Name == 'Interactive_Drill_Jammed' then
+			elseif (obj).Name == 'Jammed' then
 				return {'fix drill',true,1}
 			end
 		end
 		
 		function class.Drill:interact(plr,obj)
-			if (obj).Name == 'Interactive_Drill_Bag' then
+			if (obj).Name == 'ThermalBag' then
 				if heisters_noticed then
 					objectives:fire('Protect the thermal drill')
 				else
 					objectives:fire('Wait for the vault to open')
 				end
 				obj:Destroy()
-				drill = _assets.Drill
-				drill.Parent = workspace.Interactive
-				drill.Name = 'Interactive_Drill_ThermalDrill'
-			elseif (obj).Name == 'Interactive_Drill_Jammed' then
-				drill.Name = 'Interactive_Drill_ThermalDrill'
+				drill = _assets.ThermalDrill
+				drill.Parent = workspace.Interactive.Drill
+			elseif (obj).Name == 'Jammed' then
+				drill.Name = 'ThermalDrill'
 			end
 		end
 	end
@@ -731,11 +1023,12 @@ do
 			existing_bags = existing_bags + 1
 			local center = obj:GetModelCFrame()
 			local bag = _assets.MoneyBag:Clone()
-			bag.Parent = workspace.Interactive
+			bag.Parent = workspace.Interactive.Bag
 			
 			obj:Destroy()
-			bag.Name = 'Interactive_Bag_MoneyBag'..existing_bags
+			bag.Name = 'MoneyBag'..existing_bags
 			bag.CFrame = center
+			add_new_stimulant('suspicious',bag) -- AIs will now be aware of this as a suspicious item
 		end
 	end
 
@@ -781,8 +1074,7 @@ do
 			return 0
 		end
 	end
-}
-	
+	}	
 	local passed_node = {
 		Black=function() 
 			--'FIRE IN THE HOLE') 
@@ -905,6 +1197,18 @@ do
 	end
 	
 	
+	function follow_path(NPC,path,mem)
+		for _,position in pairs(path) do
+			NPC.Humanoid:MoveTo(position)
+			if mem then
+				mem.running_away = position
+			end
+			--print('i grew up a fokken screw up')
+			repeat wait() if position ~= NPC.Humanoid.WalkToPoint then  return end until (position-NPC.Torso.Position).Magnitude <= 3
+		end
+	end
+	
+	
 	
 	function create_node(node)
 		local evaluate = color_delay[node.BrickColor.Name]
@@ -927,18 +1231,6 @@ end
 
 
 
-
-
-
-
-
-
-
-
---@pseudo_characters
-do
-	
-end
 
 
 
@@ -977,10 +1269,27 @@ do
 	
 	broke_glass:connect(function(_,glass)
 		client_broke_glass:fire(glass)
-		--wait()
-		--glass:Destroy() -- for vaulting maybe?
+		wait()
+		glass:Destroy() -- for vaulting maybe?
 	end)
-
+	
+	event.new('Gunshot'):connect(function(plr)
+		add_new_stimulant('sgunshot',plr.Character.Torso)
+		plr.Character.Torso.Shoot:Play()
+		--print('puh pew!')
+		wait(.3)
+		remove_stimulant('sgunshot',plr.Character.Torso)
+	end)
+	
+	local police_assault = event.new()
+	
+	call_police:condition(police_assault,function()
+		if not heisters_noticed then
+			heisters_noticed = true
+			workspace.Music:Play()
+			return true
+		end
+	end)
 	
 	workspace.Interactive.BagArea.Touched:connect(function(hit)
 		if hit:FindFirstChild("Money") then
@@ -997,6 +1306,13 @@ do
 			else
 				--BANISHED TO OGGYLAND RARARARARAR
 			end
+		end
+	end)
+	
+	_free.Touched:connect(function(hit)
+		if hit:IsDescendantOf(workspace.Interactive.Civilian) then
+			hit.Parent:Destroy()
+			call_police:fire()
 		end
 	end)
 	
@@ -1018,15 +1334,16 @@ do
 		end
 	end)
 	
-	_assets.Drill.Changed:connect(function(v)
+	_assets.ThermalDrill.Changed:connect(function(v)
 		--(v,'44 in the 4 door')
-		if _interactive:FindFirstChild('Drill') then
+		if _interactive.Drill:FindFirstChild('ThermalDrill') then
 			for i = 5,0,-1 do	
 				--('onli'..i..'seconds left')
 				wait(1)
 				if math.random(1,3) == 1 then
-					_interactive.Interactive_Drill_ThermalDrill.Name = 'Interactive_Drill_Jammed'
-					_interactive:WaitForChild('Interactive_Drill_ThermalDrill')
+					--print('k')
+					_interactive.Drill.ThermalDrill.Name = 'Jammed'
+					_interactive.Drill:WaitForChild('ThermalDrill')
 				end
 			end
 			vault_opened:fire()
@@ -1097,19 +1414,21 @@ do
 	local amnt=0
 	
 	while wait(.1) do -- main loop, will handle everythin
+		
 		--dampen laughing gas
 		for i,v in pairs(workspace["Laughing gas"]:GetChildren()) do
 			v.exit.ParticleEmitter.Rate = math.max(v.exit.ParticleEmitter.Rate-0.5,0)
 		end
+		
 		-- weapons loop
 		do
 			for npc_firing,data in pairs(enemies_firing) do
 				if data.is_firing then
-					print('foyrin')
-					print((60/data.RPM),((data.last_shot or 0)-tick()))
+					--print('foyrin')
+					--print((60/data.RPM),((data.last_shot or 0)-tick()))
 					if ((60/data.RPM)-((data.last_shot or 0)-tick())) > 0 then
 						data.last_shot = tick()
-						print('SHOOOT')
+						--print('SHOOOT')
 					end
 				end
 			end
@@ -1150,16 +1469,16 @@ do
 		
 		-- bag touched loop
 		do
-			local thermal_bag = _interactive:FindFirstChild('Interactive_Bag_ThermalBag')
+			local thermal_bag = _interactive.Bag:FindFirstChild('ThermalBag')
 			if thermal_bag then
-				if (thermal_bag.Position-_interactive.VaultArea.Position).Magnitude < 8 and 
-					thermal_bag.CanCollide == true then
+				if (thermal_bag.Position-_interactive.VaultArea.Position).Magnitude < 8 and thermal_bag.CanCollide == true then
+					--print('DUN KNOOOO')
 					objectives:fire("Set up the thermal drill")
-					_interactive.Interactive_Bag_ThermalBag.Name = 'Interactive_Drill_Bag'
+					thermal_bag.Parent = workspace.Interactive.Drill
 					wait(3)
-					if _interactive:FindFirstChild("Interactive_Drill_Bag") then
-						_interactive.Interactive_Drill_Bag.Anchored = true
-						_interactive.Interactive_Drill_Bag.CanCollide = false
+					if _interactive.Drill:FindFirstChild("ThermalBag") then
+						thermal_bag.Anchored = true
+						thermal_bag.CanCollide = false
 					end
 				end
 			end

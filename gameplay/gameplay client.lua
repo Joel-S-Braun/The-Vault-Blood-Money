@@ -41,6 +41,7 @@ local mathf = {}
 local weapon = {}
 local animations = {}
 local skills = {}
+local emotions =  {}
 local remote_functions
 
 local anim_render_dist = 90
@@ -53,6 +54,7 @@ local interacting
 local is_aiming
 local reloading
 local shooting
+local switching
 
 local tutorial_mode = true
 local casing_mode = true
@@ -191,37 +193,48 @@ do
 		weld.Name = 'Left Arm'
 		weld.C0 = CFrame.new(-1.5,-1,0)
 
-		_character.Torso.Gun.C0 = CFrame.Angles(0,math.pi,0)
+		_character.Torso.Gun.C0 = CFrame.Angles(math.rad(0),math.rad(180),0)
 		_character.Torso.Head.C1 = CFrame.new()
 	end
 
 
 
 	
-	function run_animation(anim,obj,priority)
+	function run_animation(anim,obj,priority,looped)
 		priority = priority or 210
-		delta.set(obj.model:GetFullName())
-		if animations[anim][0] and (mathf.len(animations[anim]) == 1) then
-			for index,value in pairs(animations[anim][0]) do
-				obj[index]=value
-			end
-		else
-			run_service:BindToRenderStep(priority..tostring(obj),priority,function() -- so that only 1 player_animation with this priority can run at same time (makes shit like running scheduling 999x
-			local has_animated
+		delta.set(obj.model:GetFullName()..anim)
+		local real_anim = animations[anim]
+		local has_animated = {}
+		
+		run_service:UnbindFromRenderStep(priority..tostring(obj))
+		run_service:BindToRenderStep(priority..tostring(obj),priority,function() -- so that only 1 player_animation with this priority can run at same time (makes shit like running scheduling 999x
+			local next_slide
+			local keyframe
 			
-				for time,slide in pairs(animations[anim]) do
-					if time > delta.get(obj.model:GetFullName()) then
-						has_animated = true
-						for index,value in pairs(slide) do
-							obj[index]=value
-						end
+		
+			for time,data in pairs(real_anim) do
+				if not has_animated[time] then
+					if (time < delta.get(obj.model:GetFullName()..anim)) then
+						keyframe = math.max(time,keyframe or 0)
 					end
+					next_slide = math.max(time,next_slide or 0)
 				end
-				if not has_animated then
-					run_service:UnbindFromRenderStep(priority..obj.model:GetFullName())
+			end
+			
+			if keyframe then
+				has_animated[keyframe] = true
+				for i,v in pairs(real_anim[keyframe]) do
+					obj[i]=v -- updates player info with animation info
 				end
-			end)
-		end
+			elseif not next_slide then
+				if looped then
+					has_animated = {}
+					delta.set(obj.model:GetFullName()..anim) -- resets 'counter' and anim loops
+				else
+					run_service:UnbindFromRenderStep(priority..tostring(obj))
+				end
+			end
+		end)
 	end
 
 
@@ -279,9 +292,10 @@ do
 	
 	--repeat wait until casing
 
-	run_service:BindToRenderStep('Animate',201,interpret_player)
+	run_service:BindToRenderStep('Animate',215,interpret_player)
 	
-	run_animation('Hipfire',player_animation)
+	--run_animation(weapon.hipfire_anim,player_animation,210,true)
+	----print(('wewzer')
 end
 
 
@@ -500,7 +514,10 @@ do
 	
 	run_service:BindToRenderStep('Interaction',160,function()
 		if not casing_mode then
-			local target = mouse.Target or workspace.Buildings.SkyFog
+			local target
+			if (mouse.Hit.p-workspace.CurrentCamera.CFrame.p).Magnitude < 14 then
+				target = mouse.Target
+			end
 			if target and not interacting then  
 				if last_mouse_hit~= target then
 					local class,name,target=get_interactive_data(target)
@@ -512,7 +529,7 @@ do
 						if interactive_data and not has_bag then
 							interact_time = tonumber(interactive_data[3])
 							
-							interact_ui.Adornee = target
+							interact_ui.Parent = target
 							interact_ui.Enabled = true
 							
 							interact_ui.Key.Text = 'F'
@@ -522,7 +539,7 @@ do
 						
 					else
 						interact_ui.Enabled = false
-						interact_ui.Adornee = nil
+						interact_ui.Parent = workspace
 						global_class = nil
 						interact_time = nil
 						interactive_data = nil
@@ -611,7 +628,7 @@ do
 	
 	local in_system = 0
 
-	game:GetService('RunService'):BindToRenderStep('laughing gas effect',201,function()
+	--[[game:GetService('RunService'):BindToRenderStep('laughing gas effect',201,function()
 		local total_dist = 0
 		local total_count = 0
 		for i,v in pairs(workspace['Laughing gas']:GetChildren()) do
@@ -619,15 +636,13 @@ do
 			total_dist = (total_dist + (1/(v.exit.Position-game.Players.LocalPlayer.Character.Torso.Position).Magnitude^1.5) / (60/v.exit.ParticleEmitter.Rate))
 		end
 		in_system = math.min(1,(in_system * 0.998) + (total_dist * 0.2)) / total_count
-		print(total_count,in_system,total_dist,'WOOTUH')
 		local v = math.abs(math.sin(tick())^2)
 		local d = 1-v 
 		game.Lighting.ColorCorrection.TintColor = Color3.new((v * in_system) - (in_system-1) ,(d * in_system) - (in_system-1),1)
 		game.Lighting.ColorCorrection.Saturation = math.sin(tick()/3) * in_system
 		game.Lighting.ColorCorrection.Contrast = ((math.abs(math.sin(tick()/3))/2) + 0.2) * in_system
-		print(math.cos(tick()),tick())
 		workspace.CurrentCamera.CFrame = workspace.CurrentCamera.CFrame * CFrame.Angles(math.sin((tick()))/(120 / in_system),math.cos(tick())/(120 /in_system),0)
-	end)
+	end)]]
 
 	receive_open_door:connect(function(door)
 		id = 'Open door '..math.random()
@@ -668,7 +683,7 @@ do
 	end)
 	
 	recieve_broken_glass:connect(function(part)
-		print('rasclart')
+		----print(('rasclart')
 		local w1 = Instance.new('WedgePart')
 		local w2 = Instance.new('WedgePart')
 
@@ -762,6 +777,8 @@ do
 	local dest_env = event.new('player shoot')
 	local break_light = event.new('Broke light')
 	local shatter_glass = event.new('Broke glass')
+	local gun_fire = event.new('Gunshot')
+	
 	
 
 	local function shoot()
@@ -771,19 +788,21 @@ do
 				local hit,pos,norm = workspace:FindPartOnRayWithIgnoreList(ray,{_character})
 
 				if hit then
-					if(hit:IsDescendantOf(workspace.walls) or hit:IsDescendantOf(workspace.Broken)) and hit.Material == Enum.Material.Concrete then
+					----print(('yannoe dem 1s',(hit:IsDescendantOf(workspace.walls) or hit:IsDescendantOf(workspace.Broken)))
+					if(hit:IsDescendantOf(workspace.walls) or hit:IsDescendantOf(workspace.Broken)) then
 						dest_env:fire(hit,pos,norm)
+						----print(('tell moi prettoi lois')
 					elseif hit:IsDescendantOf(workspace.Lights) then
 						break_light:fire(hit)
 					elseif math.floor(hit.Transparency)~=hit.Transparency and (math.min(hit.Size.X,hit.Size.Y,hit.Size.Z) <= 1.5) then
-						print('brapalap')
+						----print(('brapalap')
 						shatter_glass:fire(hit)
 						
 					end
 				end
 				
-
-				print('buss da skeng!')
+				gun_fire:fire()
+				----print(('buss da skeng!')
 				weapon.clip = weapon.clip-1
 				recoil(player_animation)
 			else
@@ -794,21 +813,37 @@ do
 
 	local function reload()
 		reloading = true
-		print('reloading')
+		----print(('reloading')
 		wait(2)
 		weapon.clip = weapon.full_clip
 		reloading = false
+	end
+	
+	local function switch(new_weapon) -- im talking about switching weapons not actually using the weapons to switch
+		switching = true
+		run_animation('Switch',player_animation)
+		----print(('who dabs the dab')
+		wait(.4)
+		if type(weapon)=='table' and weapon.gun then
+			_character.Torso.Gun.Part1 = nil
+			weapon.gun.Parent = game.ReplicatedStorage
+		end
+		weapon = new_weapon
+		weapon.gun.Parent = workspace.Ignore_Folder
+		_character.Torso.Gun.Part1 = weapon.gun
+		run_animation(weapon.hipfire_anim,player_animation)
+		switching = false
 	end
 
 	local function run(key_up)
 		if key_up then
 			_humanoid.WalkSpeed = 20
 			sprint = true
-			run_animation('Run',player_animation)
+			run_animation(weapon.run_anim,player_animation)
 		else
 			_humanoid.WalkSpeed = 16
 			sprint = false
-			run_animation('Hipfire',player_animation)
+			run_animation(weapon.hitfire,player_animation)
 		end
 	end
 
@@ -818,7 +853,7 @@ do
 			run_animation('Aim',player_animation)
 		else
 			is_aiming = false
-			run_animation('Hipfire',player_animation)
+			run_animation(weapon.hipfire_anim,player_animation)
 		end
 	end
 	
@@ -829,20 +864,57 @@ do
 			shoot()
 		end
 	end
+	grenade = {}
+	grenade.gun = game.ReplicatedStorage.Assets.Grenade:Clone()
+	grenade.shoot = function()
+		local grenade_piece = weapon.gun
+		run_animation('Throw',player_animation)
+		wait(.15)
+		_character.Torso.Gun.Part1 = nil
+		grenade_piece.Velocity = (workspace.CurrentCamera.CFrame * CFrame.new(1, 0, -1.5, 1, 0, -0, -0, 0.928476751, -0.3713907, -0, 0.3713907, 0.928476751)).lookVector * 60
+		weapon = {switch=switch}
+	end
+	grenade.switch = switch
+	grenade.hipfire_anim = 'Brace'
+	
 
 	primary_weapon = {}
+	primary_weapon.gun = game.ReplicatedStorage.Assets.WeaponGun:Clone()
 	primary_weapon.full_clip = 13
 	primary_weapon.clip = 13
 
+	primary_weapon.hipfire_anim = 'Hipfire'
+	primary_weapon.run_anim = 'Run'
+
 	primary_weapon.shoot = shoot_semi
+	
 	primary_weapon.run = run
 	primary_weapon.reload = reload
 	primary_weapon.aim = aim
+	primary_weapon.switch = switch
+	
+	
+	secondary_weapon = {}
+	secondary_weapon.gun = game.ReplicatedStorage.Assets.WeaponGun:Clone()
+	secondary_weapon.gun.Size = Vector3.new(0.2, 0.8, 4)
+	secondary_weapon.full_clip = 21
+	secondary_weapon.clip = 21
+	
+	secondary_weapon.hipfire_anim = 'Hipfire'
+	secondary_weapon.run_anim = 'Run'
+	
+	secondary_weapon.shoot = shoot_semi
+	secondary_weapon.switch = switch
+	secondary_weapon.shoot = shoot_semi
+	secondary_weapon.run = run
+	secondary_weapon.reload = reload
+	secondary_weapon.aim = aim
+	 
 
-	weapon = primary_weapon
+	weapon = {switch=function()
+		switch(primary_weapon)
+	end,hipfire='Hipfire',run='Run'}
 end
-
-
 
 
 
@@ -869,22 +941,33 @@ do
 					elseif input.KeyCode == Enum.KeyCode.LeftShift then
 						_humanoid.WalkSpeed = 20
 						sprinting = true
-						run_animation('Run',player_animation)
+						run_animation(weapon.run_anim,player_animation)
+					elseif input.KeyCode == Enum.KeyCode.T then
+						if grenade.gun then
+							local orig = weapon
+							weapon.switch(grenade)
+							wait(0.2)
+							weapon.shoot()
+							weapon.switch(orig)
+						end
 					elseif input.KeyCode == Enum.KeyCode.E then
 						--weapon_module.change_weapon()
 					elseif input.KeyCode == Enum.KeyCode.One then
-						--weapon_module.change_weapon('primary')
+						weapon.switch(primary_weapon)
 					elseif input.KeyCode == Enum.KeyCode.Two then
-						--weapon_module.change_weapon('primary')
+						weapon.switch(secondary_weapon)
 					elseif input.KeyCode == Enum.KeyCode.Q then
 						if not sprinting and not reloading then
 							weapon.aim(not is_aiming)
-							print('MEH HAFFI AIM')
+							----print(('MEH HAFFI AIM')
 						end
 					elseif input.KeyCode == Enum.KeyCode.F then
 						interact_proxy(interact_time,'F')
 					elseif input.KeyCode == Enum.KeyCode.G then
 						attempt_drop()
+					elseif input.KeyCode == Enum.KeyCode.C then
+						run_service:UnbindFromRenderStep('Crouch')
+						
 					end
 				elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
 					if not reloading then
@@ -898,11 +981,7 @@ do
 			elseif input.KeyCode == Enum.KeyCode.G then
 				_ui.OnscreenInteract.Visible = false
 				casing_mode = false
-				local gun = game.ReplicatedStorage.Assets.WeaponGun:Clone()
-				gun.Parent = workspace
-				local gun_weld = _character.Torso.Gun
-				gun_weld.Part1 = gun
-				gun.Name = 'Gun'
+				weapon.switch()
 				--animation.run(_character,'hipfire')
 				if workspace.Interactive:FindFirstChild("Interactive_Bag_ThermalBag") then
 					ui_logic['Objectives']:fire("Get the thermal drill bag")
@@ -916,7 +995,7 @@ do
 			if input.KeyCode == Enum.KeyCode.LeftShift then
 				sprinting = false
 				_humanoid.WalkSpeed = 16
-				run_animation('Hipfire',player_animation)
+				run_animation(weapon.hipfire_anim,player_animation)
 			end
 		elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
 			--('EEEEE I SWEAR TO GOD WHY DOESNT THIS FIRE')
@@ -925,6 +1004,129 @@ do
 		elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
 			if is_aiming then
 				weapon.aim(false)
+			end
+		end
+	end)
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+--@aesthetic
+do
+	--kinda gamelogic but not rlly
+	local angle = math.rad(4) 
+	local eye_angle = math.rad(10)
+	local odds = 90
+	
+	local brow1 = CFrame.new(-0.136310577, 0.401372242, -0.559999943, 0.959538877, 0.0177439954, 0.281016499, 0.0295529962, 0.98615402, -0.163177446, -0.280020982, 0.164879993, 0.945728719)
+	local brow2 = CFrame.new(0.127689362, 0.401372242, -0.563999653, -0.963426948, -0.0048001986, 0.267928123, 0.0352389961, 0.98888725, 0.144430727, -0.265643984, 0.148589969, -0.952551544)
+	
+	local mouth = CFrame.new(0, -0.190575123, -0.582895756, 1, 0, 0, 0, 0.999999881, -0.000496729393, 0, 0.000496729393, 0.999999881)
+	
+	local eye1 = CFrame.new(0.130001068, 0.271208096, -0.579999924, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+	local eye2 = CFrame.new(-0.130001068, 0.271208096, -0.579999924, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+	
+	local function val(num)
+		local new = (num / math.abs(num))
+		if new ~= 1 or new ~= -1 then
+			new = 0
+		end
+		return new
+	end
+	
+	
+	
+	local function sigmoid(x)
+		return 1/(math.exp(-x)+1)
+	end
+	
+	local function generate_face(head)
+		local _folder = Instance.new('Folder')
+		local _face = game.ReplicatedStorage.Face
+		
+		_folder.Parent = head
+		
+		local b1,b2,e1,e2,m = Instance.new('ManualWeld'),Instance.new('ManualWeld'),Instance.new('ManualWeld'),Instance.new('ManualWeld'),Instance.new('ManualWeld')
+		b1.Parent,b2.Parent,e1.Parent,e2.Parent,m.Parent= _folder,_folder,_folder,_folder,_folder --lazy
+		b1.Part0,b2.Part0,e1.Part0,e2.Part0,m.Part0 = head,head,head,head,head -- would using loops be more efficient?
+		b1.C0,b2.C0,e1.C0,e2.C0,m.C0 = brow1,brow2,eye1,eye2,mouth
+		
+		b1.Name,b2.Name,e1.Name,e2.Name,m.Name = 'b1','b2','e1','e2','m'
+		
+		local _b1,_b2,_e1,_e2,_m = _face.brow1:Clone(),_face.brow2:Clone(),_face.eye1:Clone(),_face.eye2:Clone(),_face.mouth:Clone()
+		
+		_b1.Parent,_b2.Parent,_e1.Parent,_e2.Parent,_m.Parent=_folder,_folder,_folder,_folder,_folder
+		
+		b1.Part1,b2.Part1,e1.Part1,e2.Part1,m.Part1= _b1,_b2,_e1,_e2,_m
+		
+		return _folder
+	end
+	
+	local function render_face(face,playback,anger,happiness,concience)
+		local angle = (((-((happiness - (anger / 3)) / (math.abs(happiness) + anger))) * math.max(math.abs(happiness),math.abs(anger))/10) - 0.5) * math.rad(5)
+		local eyebrows = ((-((anger - (happiness / 3)) / (math.abs(anger) + happiness))) * math.max(math.abs(happiness),math.abs(anger))/10) * (1 + (playback/2000))
+		m= ((math.max(playback,10) ^(1/2.2))/12) 
+		if tostring(eyebrows) ~='nan' and tostring(angle) ~= 'nan' and tostring(m) ~= 'nan' then
+			face.b1.C1 = CFrame.Angles(0,0,math.rad(-20) * eyebrows)
+			face.b2.C1 = CFrame.Angles(0,0,math.rad(-20) * eyebrows)
+			
+			face.m.C1 = CFrame.Angles(angle * math.min((2/m),100),0,0)
+			face.mouth.Mesh.Offset = Vector3.new(0,0,(angle*((m)/3.5) * val(angle)))-- ----print((math.abs(m),-m)
+			----print((Vector3.new(1, 1.054 * m, 0.2) )
+			face.mouth.Mesh.Scale = Vector3.new(1, 1.054 * m, 0.2)
+		end
+		if math.random(60 * math.sqrt(concience))==1 then
+			face.eye1.Mesh.Scale = Vector3.new(0.5, 0.1, 0.2)
+			face.eye2.Mesh.Scale = Vector3.new(0.5, 0.1, 0.2)
+		else
+			face.eye1.Mesh.Scale = Vector3.new(0.5, (0.6 * concience) + .1, 0.2)
+			face.eye2.Mesh.Scale = Vector3.new(0.5, (0.6 * concience) + .1, 0.2)
+		end
+	end
+	
+	event.new('update emotions'):connect(function(npc,emotion,awareness)
+		emotions[npc]={emotion=emotion,awareness=awareness}
+	end)
+	
+	local faces = {}
+	
+	for i,v in pairs(workspace.Interactive.Civilian:GetChildren()) do
+		local generatred = generate_face(v.Head)
+		faces[#faces+1]=generatred
+	end
+	
+	run_service:BindToRenderStep('Render faces',201,function()
+		for i,v in pairs(faces) do
+			if v then
+				local sound = v.Parent:FindFirstChild("Sound")
+				local loud = 0
+				local fear = 0
+				local sadness = 0
+				local concience = 1
+				
+				local brain = emotions[v.Parent.Parent]
+				if brain then
+					fear = brain.emotion.Z + (brain.emotion.X/3) -- if hes hurt he'll look more scared
+					sadness = brain.emotion.Y
+					concience = brain.awareness
+				end
+				if sound then
+					loud = (sound.PlaybackLoudness) * 1.2
+				end
+				--print(math.abs(sadness)*50,'wallahi')
+				render_face(v,loud + (math.abs(sadness) + math.abs(fear))*70,(-(fear - 0.5)) *20,(-(sadness - 0.5))*20,concience)
+			else
+				faces[i]=nil
 			end
 		end
 	end)
@@ -994,7 +1196,7 @@ do
 		if is_downed then
 			_humanoid.WalkSpeed = 0
 			blur = true
-			local amount = game.Lighting.Bluri.Size^2
+			local amount = game.Lighting.Blur.Size^2
 			for i,v in pairs(_ui:GetChildren()) do
 				v.Visible = false
 			end
@@ -1066,7 +1268,7 @@ do
 			stealth_bonus = total_money  * .2
 		end
 		local result =math.max((total_money + stealth_bonus) - ((heisters_in_custody * 5000) + (civilians_killed * 1000)),0)
-		print(result,total_money,((heisters_in_custody * 5000) + (civilians_killed * 1000)))
+		----print((result,total_money,((heisters_in_custody * 5000) + (civilians_killed * 1000)))
 		
 		
 		_ui.Visible = false

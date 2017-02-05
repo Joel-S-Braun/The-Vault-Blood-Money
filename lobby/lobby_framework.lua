@@ -1,186 +1,175 @@
 --[[
-	@1/1/16
+	@1/28/2017
+	@axel-studios
+	@the-vault-blood-money
+	@lobby-client
+	@waffloid
 	
-	@vectormodule
-	@networkmodule
-	@event-module
-	@colour-module
-	@load-module
+	in case ms hassam or some other teacher needs proof i can actually CODE THINGS then here you go i wrote this.
+	and yes ive worked over 16 hours in 1 day (its actually quite common for me to work 16 hours lol)
+	
+	id rather not to make big deal out of the fact im good at coding if you were thinking of that (doubt you were, but just saying just in case)
+	just let me not do history GSCE or something so i have more time to work on this
 --]]
 
-local run_service = game:GetService('RunService')
-local local_player = game.Players.LocalPlayer
-local starter_gui = game.StarterGui
-local player_gui = local_player:WaitForChild('PlayerGui')
-local lobby_gui = starter_gui.LobbyGui:Clone()
-lobby_gui.Parent = player_gui
 
+local _network = game.ReplicatedStorage.Network
 local _replicated_storage = game.ReplicatedStorage
-local _network = _replicated_storage.Network
 
-workspace.CurrentCamera.CameraType = 6
-workspace.CurrentCamera.CoordinateFrame = CFrame.new(
-	-55.5601311, 7.1210412, 20.1081375, 
-	0.469456315, 0.172260368, -0.839931607, 
-	7.45058149e-09, 0.951272726, 0.30835107, 
-	0.88295579, -0.14475736, 0.446580946)
-
-local load = {}
-local colour = {}
-local network = {}
-local vector = {}
-local button_id = {}
-local event_id = {}
 local event = {}
+local named_events = {}
 local remote_functions = {}
+local item_modules = {}
+local click_data = {}
 
-local loadout_type = 'Primary'
+local crew_logo = {630653212,630652920} -- 1,2
 
-local color_off = Color3.new(13/255,13/255,13/255)
-local color_on = Color3.new(40/255,40/255,40/255)
-local color_highlight = Color3.new(37/255,37/255,37/255)
-local color_black = Color3.new(0,0,0)
+local crew_name = {'Greengate Crew','Blood Crew'}
+local gamemode = {'pvp raid','heist'}
+local shop_select = {one='WEAPON',two='MISC',three='ATTACH.',four='MASKS',five='SKINS'}
+local skill_select = {one='TACTICIAN',two='SPECTRE',three='BEZERK',four='SPECLIAST',five='TECHNICIAN'}
 
-local function fnil() end
-local function switch(input)
-	return function(self) return self[input] or self['default'] end
+local run_service = game:GetService('RunService')
+
+local gamemode={'heist','pvp raid'}
+
+local current_page
+
+local map_imgs = {
+	['Axel Theatre'] = {612712250,UDim2.new(0.507, 0,0.37, 0)},
+	['WaffleCorp Convenience Raid'] = {633990610,UDim2.new(0.73, 0,0.35, 0)},
+	['First National Bank'] = {612711079,UDim2.new(0.675, 0,0.315, 0)},
+	['Green Leaf Bank'] = {633985279,UDim2.new(0.61, 0,0.46, 0)},
+	['SilverStone Bank'] = {633985188},
+	['North Silver Town Warehouse'] = {612713574},
+	['default'] = {612712906},
+	
+}
+
+local maps_unlock = {
+	heist = {
+		['Coral Raid'] = 1,
+		['Axel Theatre'] = 1, -- unlocked on first play
+		['WaffleCorp Convenience Raid'] = 5,
+		['First National Bank'] = 13,
+		['Citi Bank'] = 21,
+		['Polinoli Bank'] = 34,
+		['Green Leaf Bank'] = 52,
+		['Silverstone Bank'] = 73,
+		['Casino Raid'] = 85,
+		
+	},
+	['pvp raid'] = {
+		['Greengate Apartment Raid']= 1,
+		['Woodberry Estate Raid '] = 1,
+		['Upper Greengate Warehouse Raid'] = 42,
+		['North Silver Town Warehouse'] = 42,
+	}
+} -- 31 total proxy places needed. gg
+
+local map_desc = {
+	['Coral Raid'] = {desc=1,difficulty='easy',maximum_score=069},
+	['Axel Theatre'] = {desc=1,difficulty='easy',maximum_score=069}, -- unlocked on first play
+	['WaffleCorp Convenience Raid'] = {desc=5,difficulty='medium',maximum_score=069},
+	['First National Bank'] = {desc=13,difficulty='medium',maximum_score=069},
+	['Citi Bank'] = {desc=21,difficulty='hard',maximum_score=069},
+	['Polinoli Bank'] = {desc=41,difficulty='hard',maximum_score=069},
+	['Green Leaf Bank'] = {desc=52,difficulty='very hard',maximum_score=069},
+	['Silverstone Bank'] = {desc=73,difficulty='very hard',maximum_score=069},
+	['Casino Raid'] = {desc=81,difficulty='impossible',maximum_score=069},
+	['Greengate Apartment Raid']= {desc=0,difficulty='medium',maximum_score=069},
+	['Woodberry Estate Raid '] = {desc=1,difficulty='medium',maximum_score=069},
+	['Upper Greengate Warehouse Raid'] = {desc=42,difficulty='hard',maximum_score=069},
+	['North Silver Town Warehouse'] = {desc=42,difficulty='hard',maximum_score=069},
+}
+
+local maps = {
+	['pvp raid'] = {},
+	['heist']= {}
+}
+
+local _gui
+
+local inventory_data
+local current_crew
+
+local function exp_curve(l)
+	l = math.floor(l)
+	return math.floor((1.1^l)*100 + (l*1000)) + 1300
 end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
---@vector-module
-do
-	local col = Color3.new
-	
-	function vector.to_color3(vec)
-		return col(vec.X,vec.Y,vec.Z)
+local function scroll(tab,offset)
+	local offset = offset or 1
+	local new = {}
+	for i,v in pairs(tab) do
+		new[(((i+offset)-1)%#tab)+1] = v
+	end
+	for i,v in pairs(new) do
+		tab[i]=v
 	end
 end
+local function lines(text,len)
+	return ('0'):rep(len-#text)..text
+end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
---@network-module
+--@networking/events
 do
-	local connect = {}
-	
 	_network.RemoteEvent.OnClientEvent:connect(function(name,...)
-		for _,v in pairs(connect[name] or {}) do
-			v(...)
+		local event = named_events[name]
+		if event then
+			for i,v in pairs(event.connections) do
+				if type(v) == 'function' then
+					v(...)
+				else
+					v:fire(...)
+				end
+			end
 		end
 	end)
-	
-	function network.invoke(...)
-		return _network.RemoteFunction:InvokeServer(...)
-	end
-	
-	function network.get_event(name)
-		return unpack(network.invoke('get_event',name))
-	end
-	
-	function network.connect(name,func)
-		connect[name] =  {} or connect[name]
-		connect[tostring(func)] = func
-		return function()
-			connect[tostring(func)] = nil
+
+	_network.RemoteFunction.OnClientInvoke = function(name,...)
+		local func = remote_functions[name]
+		if func then
+			return func(...)
 		end
 	end
-end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
---@event-module
-do
-	remote_functions['get_event'] = function(name)
-		for i,v in pairs(event_id) do
-			if v.name == name then
-				return v.value
-			end
-		end
-	end
-	
 	function event.new(name)
-		local event = {name=name,connections={}}
-		
-		event_id[tostring(event)] = event
-		
-		function event:connect(func)
-			local id = tostring(func)
-			event.connections[id] = func
-			return function() -- terminates connected function
-				event.connections[id]=nil
-			end
-		end
-		
-		function event:change_val(...)
-			event.value = {...}
-		end
-		
+		local event = {connections={}}
 		function event:fire(...)
-			event.value={...}
-			if event.name then
-				_network.RemoteEvent:FireServer(event.name,...)
+			if name then
+				_network.RemoteEvent:FireServer(name,...)
 			end
-			for _,v in pairs(event.connections) do
-				v(...)
-			end
-		end
-		
-		function event:bind(func)
-			run_service.BindToRenderStep(tostring(func)) -- serialised RAM address of function
-			return function()
-				run_service.UnbindToRenderStep(tostring(func))
-			end
-		end
-		
-		function event:link(condition,output)
-			return event:connect(function(...)
-				if condition(...) then
-					output:fire(...)
+			for  x = 1,#event.connections do
+				if type(event.connections[x]) == 'function' then
+					event.connections[x](...)
+				else
+					event.connections[x]:fire(...)
 				end
-			end)
+			end
+		end
+		function event:connect(func)
+			event.connections[#event.connections+1] = func
+		end
+		function event:condition(new_event,condition)
+			event:connect(function(...) local output = {condition(...)} if #output ~= 0 then new_event:fire(unpack(output)) end end)
+		end
+		if name then
+			named_events[name] = event
 		end
 		return event
 	end
-	
-	_network.RemoteFunction.OnClientInvoke = function(name,...)
-		return remote_functions[name](...)
-	end
+end
+
+
+
+
+
+
+
+--inventory
+do
+	--local self_inventory = 
 end
 
 
@@ -190,55 +179,450 @@ end
 
 
 
-
-
-
-
-
-
-
-
-
---@colour-module
+--@init
 do
-	local new_vec = Vector3.new
-	local col = Color3.new
-
-	function colour.to_vector3(colour)
-		return new_vec(colour.r,colour.g,colour.b)
+	pcall(function()
+		local starterGui = game:GetService('StarterGui')
+		starterGui:SetCore("TopbarEnabled", false)
+	end)
+	
+	game.StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
+	workspace.CurrentCamera.CameraType = 6
+	workspace.CurrentCamera.CFrame = CFrame.new(-58.5442123, 5.5469656, 19.6558266, 0.426971704, 0.201771796, -0.881466568, -7.4505806e-09, 0.974787951, 0.223133475, 0.904265046, -0.0952716693, 0.416206837)
+	
+	_gui = game.StarterGui.gui:Clone()
+	_gui.Parent = game.Players.LocalPlayer.PlayerGui
+	current_crew = (game.Players.LocalPlayer.UserId%2)+1  -- 1 = greeng8,2=bled
+	_gui.main_menu.info.crew.Image = 'rbxassetid://'..crew_logo[current_crew]
+	
+	_gui.main_menu.Visible = true
+	_gui.item_interact.Visible = false
+	_gui.matchmaking.Visible = false
+	
+	inventory_data = _network.RemoteFunction:InvokeServer('get inventory')
+	
+	if not inventory_data then -- if data failed to load, retry till it loads. if datastore temporarily breaks game will break but at least they dont override data lol
+		repeat 
+			wait(5)
+			inventory_data = _network.RemoteFunction:InvokeServer('get inventory')
+		until inventory_data -- yay it loaded, carry on now!
+	end
+	local change_order = event.new('change order')
+	function inventory_data:attempt_purchase(obj)
+		print(obj,'Y THO')
+		local purchase_failed = _network.RemoteFunction:InvokeServer('attempt purchase',obj)
+		if not purchase_failed then
+			print('the ink splashes')
+			inventory_data.owned_items[obj] = item_modules[obj]
+			attempt_load_shop(current_page)()
+		end
+		print(purchase_failed,'N 1 5 N 1 7 S H O')
+	end
+	function inventory_data:change_order(class,obj)
+		change_order:fire(class,obj)
+		if inventory_data.owned_items[obj] then
+			inventory_data.equipped_items[class]=obj
+		end
 	end
 	
-	function colour.lerp(c1,c2,delta)
-		return vector.to_color3(colour.to_vector3(c1):lerp(colour.to_vector3(c2),delta))
+	for gamemode,list in pairs(maps_unlock) do
+		for map,level in pairs(list) do
+			if level <= inventory_data.level then
+				maps[gamemode][#maps[gamemode]+1] = map
+			end
+		end
 	end
+	
+	local attempt_equip,attempt_buy
+	
+	for _,module in pairs(_replicated_storage.items:GetChildren()) do
+		module_script = require(module)
+		module_script.name=module.Name
+		item_modules[module.Name] = module_script
+	end
+	
+	local item_interact_sidebar_loader = {
+		inventory={},
+		skills={},
+		shop={},
+	}
+	
+	--local selected_item
+	
+	
+	
+	
+	
+	
+	--menu
+	do
+		--local current_item_interact
+		
+		local button_data = {
+			inventory = function()
+				clear_icon()
+				attempt_load_inventory(current_page or 'gun')()--meh
+				_gui.main_menu.Visible = false
+				_gui.item_interact.Visible = true
+				
+				_gui.item_interact.body.data.ui_name.Text = 'INVENTORY'
+				
+				for name,val in pairs(shop_select) do
+					_gui.item_interact.body.select[name].Text = val
+				end
+			end,
+			play = function()
+				_gui.main_menu.Visible = false
+				_gui.matchmaking.Visible = true
+			end,
+			shop = function()
+				clear_icon()
+				attempt_load_shop(current_page or 'gun')()--meh 2.0
+				_gui.main_menu.Visible = false
+				_gui.item_interact.Visible = true
+				
+				_gui.item_interact.body.data.ui_name.Text = 'SHOP'
+				
+				for name,val in pairs(shop_select) do
+					_gui.item_interact.body.select[name].Text = val
+				end
+			end,
+			skills = function()
+				_gui.main_menu.Visible = false
+				_gui.item_interact.Visible = true
+				
+				_gui.item_interact.body.data.ui_name.Text = 'SKILLS'
+				
+				for name,val in pairs(skill_select) do
+					_gui.item_interact.body.select[name].Text = val
+				end
+			end,
+			tutorial = function()
+				
+			end,
+		}
 
-	function colour.tween(frame,c2,time)
-		run_service:UnbindFromRenderStep(frame:GetFullName()) -- in case there was an anim running beforehand
-		local time = time or .1
-		local c1 = frame.BackgroundColor3
-		local base = tick()
-		run_service:BindToRenderStep(frame:GetFullName(),Enum.RenderPriority.Camera.Value,function()
-			local elapsed_time = (tick()-base)
-			local delta = elapsed_time/time
-			if delta > 1 then
-				delta = 1
-				frame.BackgroundColor3 = colour.lerp(c1,c2,delta)
-				run_service:UnbindFromRenderStep(frame:GetFullName())
+		local function attempt_run(i)
+			return function()
+				local func = current_item_interact[i]
+				if func then
+					func()
+				end
+			end
+		end
+		
+		_gui.item_interact.body.bottom_half.sidebar.buttons.buy.MouseButton1Up:connect(function()
+			if current_item_interact == item_interact_sidebar_loader.shop then
+				print(selected_item,'k')
+				inventory_data:attempt_purchase(selected_item) -- tfw variable dissapears lol
+			end
+		end)
+		
+		_gui.item_interact.body.select.one.MouseButton1Up:connect(attempt_run(1)) -- func returns func dont cry ok
+		_gui.item_interact.body.select.two.MouseButton1Up:connect(attempt_run(2))
+		_gui.item_interact.body.select.three.MouseButton1Up:connect(attempt_run(3))
+		_gui.item_interact.body.select.four.MouseButton1Up:connect(attempt_run(4))
+		_gui.item_interact.body.select.five.MouseButton1Up:connect(attempt_run(5))
+		
+		for _,button in pairs(_gui.main_menu.select.buttons:GetChildren()) do
+			button.MouseEnter:connect(function()
+				_gui.main_menu.select.scroll:TweenPosition(button.Position, "Out", "Quad", .2,true)
+				button:TweenPosition(UDim2.new(0,50,button.Position.Y.Scale,0), "Out", "Quad", .2,true)
+			end)
+			button.MouseLeave:connect(function()
+				button:TweenPosition(UDim2.new(0,30,button.Position.Y.Scale,0), "Out", "Quad", .2,true)
+			end)
+			button.MouseButton1Up:connect(function()
+				button_data[button.Name]()
+				current_item_interact = item_interact_sidebar_loader[button.Name]
+				print(button.Name,'meme')
+				_gui.back.Visible = true
+			end)
+		end
+		
+		_gui.main_menu.info.plrdata.data.cash.Text = '$'..inventory_data.cash
+		_gui.main_menu.info.plrdata.data.level.Text = lines(tostring(inventory_data.level),3)
+		_gui.main_menu.info.plrdata.data.name.Text=game.Players.LocalPlayer.Name:upper()
+		_gui.main_menu.info.plrdata.data.xp.Text = inventory_data.exp..'/'..(exp_curve(inventory_data.level+1)-exp_curve(inventory_data.level))
+	end
+	
+	
+	
+	
+	
+	
+	
+	--matchmaking
+	do
+		local current_map_scroll = maps.heist
+		
+		local function update_matchmaking()
+			print(current_map_scroll,#current_map_scroll)
+			for i,v in pairs(current_map_scroll) do
+				print(i,v,'Xd')
+			end
+			_gui.matchmaking.gamemode.text.Text = gamemode[1]:upper()
+			_gui.matchmaking.map.text.Text = current_map_scroll[1]:upper()
+			print(current_map_scroll[1],current_map_scroll)
+			local data = map_imgs[current_map_scroll[1]] or map_imgs.default
+			_gui.matchmaking.sidebar.selected.Image = 'rbxassetid://'..data[1]
+			if data[2] then
+				_gui.matchmaking.sidebar.selected.Vault.Visible = true
+				_gui.matchmaking.sidebar.selected.Vault.Position = data[2]
 			else
-				frame.BackgroundColor3 = colour.lerp(c1,c2,delta)
+				_gui.matchmaking.sidebar.selected.Vault.Visible = false
 			end
+			_gui.matchmaking.sidebar.selected.name.Text = current_map_scroll[1]:upper()
+			_gui.matchmaking.sidebar.selected.desc.Text = map_desc[current_map_scroll[1]].desc
+			_gui.matchmaking.sidebar.item_info.data.difficulty.Text = map_desc[current_map_scroll[1]].difficulty:upper()
+			_gui.matchmaking.sidebar.item_info.data.max_score.Text = map_desc[current_map_scroll[1]].maximum_score
+		end
+		
+		run_service:BindToRenderStep('Flash red dot',199,function()
+			_gui.matchmaking.sidebar.selected.Vault.ImageTransparency = 0.45 + (math.sin(tick()) * 0.15)
 		end)
+
+		_gui.matchmaking.gamemode.left.MouseButton1Up:connect(function()
+			scroll(gamemode,-1)
+			current_map_scroll = maps[gamemode[1]]
+			print(gamemode[1])
+			update_matchmaking()
+		end)
+		_gui.matchmaking.gamemode.right.MouseButton1Up:connect(function()
+			scroll(gamemode,1)
+			current_map_scroll = maps[gamemode[1]]
+			update_matchmaking()
+		end)
+		
+		_gui.matchmaking.map.left.MouseButton1Up:connect(function()
+			scroll(current_map_scroll,-1)
+			update_matchmaking()
+		end)
+		
+		_gui.matchmaking.map.right.MouseButton1Up:connect(function()
+			scroll(current_map_scroll,1)
+			update_matchmaking()
+		end)
+		
+		
 	end
 	
-	function colour.flash(frame)
-		local base = tick()
-		run_service:BindToRenderStep(frame:GetFullName(),Enum.RenderPriority.Camera.Value,function()
-			local offset = tick()-base
-			local delta = (math.abs(math.sin(offset))*.106)+(13/255)
-			local col = Color3.new(delta,delta,delta)
-			frame.BackgroundColor3 = col
-		end)
+	
+	
+	
+	
+	
+	--misc
+	do -- i dont actually need a new scope for this but it looks more organiseder
+		function load_buttons(list)
+			local increment = 0
+			for _,obj in pairs(_gui.item_interact.body.bottom_half.sidebar.buttons:GetChildren()) do
+				if list[obj.Name] then
+					obj.Visible = true
+					obj.Position = UDim2.new(0,0,-increment,-(increment-1)*10)
+					increment = increment + 1
+				else
+					obj.Visible = false
+				end
+			end
+			_gui.item_interact.body.bottom_half.sidebar.item_info.Position = UDim2.new(0,20,0.5,-increment*50)
+		end
+		function load_icons(list)
+			list = list
+			for real_icon = 1,24 do
+				local icon = list[real_icon]
+				local obj = _gui.item_interact.body.bottom_half.item_select.box:FindFirstChild(tostring(real_icon),true)
+				if not icon then
+					obj.Visible = false
+				else
+					--icon = icon.id
+					if type(icon) == 'number' then
+						icon = 'rbxassetid://'..icon -- for number JET SKI
+					end
+					obj.Visible = true
+					obj.BackgroundTransparency = 0.7
+					obj.Image = 'rbxassetid://'..icon.id
+					obj.tick.primary.Visible,obj.tick.secondary.Visible,obj.tick.tertiary.Visible=false
+					for class,item in pairs(inventory_data.equipped_items) do
+						if item == icon.name then
+							if class:sub(1,#'primary')=='primary' then
+								obj.tick.primary.Visible = true
+							elseif class:sub(1,#'secondary')=='secondary' then
+								obj.tick.secondary.Visible = true
+							else
+								obj.tick.tertiary.Visible = true -- right?
+							end
+						end
+					end
+				end
+			end
+		end
+		
+		function clear_icon()
+			--_gui.item_interact.body.bottom_half.sidebar.selected.desc.Text = ''
+			_gui.item_interact.body.bottom_half.sidebar.selected.Visible = false
+			--[[for _,obj in pairs(_gui.item_interact.body.bottom_half.sidebar.selected.side:GetChildren()) do
+				obj.Text = ''
+			end]]
+			_gui.item_interact.body.bottom_half.sidebar.item_info.Visible = false
+			load_buttons{}
+		end
+		
+		local function load_data(num) -- GROSS SPAGHETTI CODE AHEAD WARNING
+			
+			local real_data = click_data[tonumber(num)]
+			selected_item = click_data[tonumber(num)].name
+			
+			_gui.item_interact.body.bottom_half.sidebar.selected.side.name.Text =real_data.name:upper()
+			_gui.item_interact.body.bottom_half.sidebar.selected.Visible = true
+			if real_data.level_req then
+				_gui.item_interact.body.bottom_half.sidebar.selected.side.lvl_req.Text = 'LEVEL '.. real_data.level_req..' NEEDED'
+				_gui.item_interact.body.bottom_half.sidebar.selected.side.cost.Text = '$'..real_data.cost
+			else
+				_gui.item_interact.body.bottom_half.sidebar.selected.side.lvl_req.Text=''
+				_gui.item_interact.body.bottom_half.sidebar.selected.side.cost.Text = ''
+			end
+			
+			_gui.item_interact.body.bottom_half.sidebar.selected.desc.Text = (real_data.desc or ''):upper()
+			_gui.item_interact.body.bottom_half.sidebar.selected.Image = 'rbxassetid://'..real_data.id
+			
+			if current_item_interact==item_interact_sidebar_loader.inventory then
+				if real_data.specific=='primary' then
+					load_buttons{primary=true}
+				elseif real_data.specific=='secondary' then
+					load_buttons{secondary=true}
+				elseif real_data.specific=='all' then
+					load_buttons{primary=true,secondary=true,tertiary=true}
+				else
+					load_buttons{primary=true,secondary=true}
+				end
+			end
+			
+			-- ik loops exist but TYPE is a thing ((rekd))
+			if real_data.accuracy or real_data.damage or real_data.recoil then
+				_gui.item_interact.body.bottom_half.sidebar.item_info.Visible = true
+				
+				_gui.item_interact.body.bottom_half.sidebar.item_info.data.accuracy.Text =': '.. real_data.accuracy or '0'
+				_gui.item_interact.body.bottom_half.sidebar.item_info.data.damage.Text = ': '..real_data.damage or '0'
+				_gui.item_interact.body.bottom_half.sidebar.item_info.data.recoil.Text = ': '..real_data.recoil or '0'
+				_gui.item_interact.body.bottom_half.sidebar.item_info.data.type.Text = ': '..(real_data.type or real_data.shop_class):upper()
+			else
+				_gui.item_interact.body.bottom_half.sidebar.item_info.Visible = false
+			end
+		end
+		
+		for _,box in pairs(_gui.item_interact.body.bottom_half.item_select.box:GetChildren()) do
+			box.MouseButton1Up:connect(function()
+				load_data(box.Name)
+			end)
+			for _,box in pairs(box:GetChildren()) do -- muh recursives!
+				if box:IsA("ImageButton") then
+					box.MouseButton1Up:connect(function()
+						load_data(box.Name)
+					end)
+				end
+			end
+		end
+		
+		local function clear_ui(select)--BETTER
+			return function()
+				print('u wot matt?')
+				for _,object in pairs(_gui.item_interact.body.select:GetChildren()) do
+					if select == object then
+						object.BackgroundTransparency = 0.2
+					else
+						object.BackgroundTransparency = 1
+					end
+				end
+			end
+		end
+		
+		for _,object in pairs(_gui.item_interact.body.select:GetChildren()) do
+			object.MouseButton1Up:connect(clear_ui(object)) -- technically recursive?
+		end
 	end
+	
+	
+	
+	
+	--shop
+	do -- hi mr west can u see this, if u can remember to get the laptop k thx (btw i worked 2 hours today so far are u proud lol)
+		
+		
+		--load_buttons({equip_primary=true})
+		
+		load_icons(click_data)
+
+		function attempt_load_shop(class)
+			return function()
+				load_buttons{buy=true}
+				current_page = class
+				click_data={}
+				_gui.item_interact.body.bottom_half.sidebar.item_info.Visible = false
+				for obj_name,data in pairs(item_modules) do
+					if data.shop_class == class and not inventory_data.owned_items[obj_name] then
+						click_data[#click_data+1] = data
+					end
+				end
+				_gui.item_interact.body.bottom_half.sidebar.selected.desc.Visible = true
+				load_icons(click_data)
+			end
+		end
+		
+		item_interact_sidebar_loader.shop[1] =attempt_load_shop('gun')
+		item_interact_sidebar_loader.shop[2] =attempt_load_shop('misc')--?
+		item_interact_sidebar_loader.shop[3] =attempt_load_shop('attachment')
+		item_interact_sidebar_loader.shop[4] =attempt_load_shop('mask') -- why is this in shop, i will never know lol (its pretty much clickbait as you can only get masks from achievements)
+		item_interact_sidebar_loader.shop[5] =attempt_load_shop('skin') -- also only achievable, lol. (well, PROBABLY only achievable. may sell cases nd dat)
+	end
+	
+	
+	
+	
+	
+	
+	--inventory
+	do
+		function attempt_load_inventory(class)
+			return function()
+				--clear_icon()
+				click_data = {}
+				current_page = class
+				for name,data in pairs(inventory_data.owned_items) do
+					if data.shop_class == class then
+						click_data[#click_data+1]=data
+					end
+				end
+				load_icons(click_data)
+				_gui.item_interact.body.bottom_half.sidebar.selected.desc.Visible = false
+				--load_buttons()
+			end
+		end
+		
+		_gui.item_interact.body.bottom_half.sidebar.buttons.primary.MouseButton1Up:connect(function()
+			if inventory_data.equipped_items[item_modules[selected_item].class] ~= selected_item then
+				inventory_data:change_order('primary_'..item_modules[selected_item].class ,selected_item)
+			else
+				inventory_data:change_order('primary_'..item_modules[selected_item].class ,nil or )
+			end
+			
+			--attempt_load_inventory(current_page)() -- WEE WOO WEE WOO MEMORY LEAK, REPLACE (or no?)
+		end)
+		
+		item_interact_sidebar_loader.inventory[1] =attempt_load_inventory('gun')
+		item_interact_sidebar_loader.inventory[2] =attempt_load_inventory('misc')--?
+		item_interact_sidebar_loader.inventory[3] =attempt_load_inventory('attachment')
+		item_interact_sidebar_loader.inventory[4] =attempt_load_inventory('mask') -- why is this in shop, i will never know lol (its pretty much clickbait as you can only get masks from achievements)
+		item_interact_sidebar_loader.inventory[5] =attempt_load_inventory('skin')
+	end
+	
+	_gui.back.MouseButton1Up:connect(function()
+		for i,v in pairs(_gui:GetChildren()) do
+			v.Visible = false
+		end
+		_gui.main_menu.Visible = true
+	end)
+	
 end
 
 
@@ -247,278 +631,7 @@ end
 
 
 
-
-
-
-
-
-
-
---@load-module
-do
-	function load.highlight(button)
-		return function() colour.tween(button,color_on,.1) end
-	end
-
-	function load.lowlight(button)
-		return function() colour.tween(button,color_off,.1) end
-	end	
-
-	function load.button(button,switchtable)
-		button_id[button:GetFullName()] = switchtable
-		button.MouseButton1Up:connect(switch('button-1-up')(switchtable) or fnil)
-		button.MouseButton1Down:connect(switch('button-1-down')(switchtable) or fnil)
-		button.MouseEnter:connect(switch('mouse-enter')(switchtable) or load.highlight(button))
-		button.MouseLeave:connect(switch('mouse-leave')(switchtable) or load.lowlight(button))
-	end
-
-	
-	function get_button_switchtable(button)
-		return button_id[button:GetFullName()]
-	end
-
-	function load.folder(folder,switchtable)
-		switchtable['default'] = {}
-		local folderchildren = folder:GetChildren()
-		for i = 1,#folderchildren do
-			local button = folderchildren[i]
-			load.button(button,switch(button.Name)(switchtable))
-		end
-	end
-	
-	function load.switch_ui(old,new)
-		return function()
-			old.Visible = false
-			new.Visible = true
-			load.off(old)
-		end
-	end
-
-	function load.off(frame)
-		for i,v in pairs(frame:GetChildren()) do
-			local switchtable = get_button_switchtable(v)
-			if switchtable then
-				(switchtable['mouse-leave'] or load.lowlight(v))()
-			end
-			load.off(v)
-		end
-	end
-	
-	local item_data = network.invoke('get_item_data')
-	local player_data = network.invoke('get_player_data')
-	
-	function load.ui()
-		
-		local list_updated = event.new('list_updated')
-		local player_data_updated = event.new('player_data_updated')
-		
-		local function list(name,offset)
-			local processed = item_data[name]
-			if processed then
-				local new = {}
-				for i = 1,#processed do
-					new[i] = processed[((i+offset-1)%#processed)+1]
-				end
-				item_data[name] = new
-				list_updated:fire(item_data)
-				return item_data[name][1]
-			end
-		end
-		
-		local function crime_net()
-			local self = lobby_gui.CrimeNet
-			self.Visible = false
-			load.folder(self.Options,
-				{
-					['Menu'] = {
-						['button-1-up'] = load.switch_ui(self,lobby_gui.Menu);
-					};
-				}
-			)
-		end
-		local function edit_party()
-			local self = lobby_gui.EditParty
-			self.Visible = false
-		end
-		local function character()
-			local self = lobby_gui.Character
-			self.Visible = false
-			local children = self.Main.Centre.Switches:GetChildren()
-			for i = 1,#children do
-				local label = children[i]
-				label.Text = (item_data[label.Name] or {'none'})[1]:upper()
-				
-				label.RightArrow.MouseButton1Up:connect(function()
-					label.Text = (list(label.Name,1) or 'none'):upper()
-				end)
-				
-				label.LeftArrow.MouseButton1Up:connect(function()
-					label.Text = (list(label.List,-1) or 'none'):upper()
-				end)
-			end
-		end
-		
-		local function loadout()
-			local self = lobby_gui.Loadout
-			self.Visible = false
-			
-			local function update()
-				local children = self.Main.Centre.Switches:GetChildren()
-				for i = 1,#children do
-					local label = children[i]
-					label.Text = ((item_data[loadout_type..'_'..label.Name] or {'none'})[1] or 'none'):upper()
-				end
-			end
-			
-			self.Main.Centre.Primary.MouseButton1Up:connect(function()
-				loadout_type = 'Primary'
-				colour.tween(self.Main.Centre.Primary,color_highlight,.1)
-				colour.tween(self.Main.Centre.Secondary,color_black,.1)
-				update()
-			end)
-			
-			self.Main.Centre.Secondary.MouseButton1Up:connect(function()
-				loadout_type = 'Secondary'
-				colour.tween(self.Main.Centre.Primary,color_black,.1)
-				colour.tween(self.Main.Centre.Secondary,color_highlight,.1)
-				update()
-			end)
-			
-			self.Main.Centre.Primary.TextLabel.Text = item_data['Primary_Weapon'][1]:upper()
-			self.Main.Centre.Secondary.TextLabel.Text = item_data['Secondary_Weapon'][1]:upper()
-			
-			self.Main.Centre.Primary.Left.MouseButton1Up:connect(function()
-				self.Main.Centre.Primary.TextLabel.Text = list('Primary_Weapon',1)
-			end)
-			self.Main.Centre.Primary.Right.MouseButton1Up:connect(function()
-				self.Main.Centre.Primary.TextLabel.Text = list('Primary_Weapon',-1)
-			end)
-			self.Main.Centre.Secondary.Left.MouseButton1Up:connect(function()
-				self.Main.Centre.Secondary.TextLabel.Text = list('Secondary_Weapon',1):upper()
-			end)
-			self.Main.Centre.Secondary.Right.MouseButton1Up:connect(function()
-				self.Main.Centre.Secondary.TextLabel.Text = list('Secondary_Weapon',-1):upper()
-			end)
-			
-			local children = self.Main.Centre.Switches:GetChildren()
-			for i = 1,#children do
-				local label = children[i]
-				local lists = {}
-				local function label_list(add)
-					return lists[loadout_type..'_list'](add)
-				end
-				label.Text = ((item_data[loadout_type..'_'..label.Name] or {'none'})[1] or 'none'):upper()
-				
-				label.RightArrow.MouseButton1Up:connect(function()
-					label.Text = (list(loadout_type..'_'..label.Name,1) or 'none'):upper()
-				end)
-				
-				label.LeftArrow.MouseButton1Up:connect(function()
-					label.Text = (list(loadout_type..'_'..label.Name,-1) or 'none'):upper()
-				end)
-			end
-	
-	
-			load.folder(self.Options,
-				{
-					['Menu'] = {
-						['button-1-up'] = load.switch_ui(self,lobby_gui.Menu)
-					};
-				}
-			)
-		end
-		local function ready_up()
-			local self = lobby_gui.ReadyUp
-			self.Visible = false
-		end
-		local function shop()
-			local self = lobby_gui.Shop
-			self.Visible = false
-			load.folder(self.Options,
-				{
-					['Menu'] = {
-						['button-1-up'] = load.switch_ui(self,lobby_gui.Menu)
-					};
-				}
-			)
-		end
-		local function menu()
-			local flash
-			
-			local self = lobby_gui.Menu
-			local notification = self.Notification.Text
-			local img = self.Notification
-			local update = network.get_event('update')
-			local update = game.HttpService:JSONDecode(update)
-			local number = (('0'):rep(6-#update['Update_Count'])..update['Update_Count'])
-			local txt = ''
-			
-			for i = 3,8,2 do -- could probably use gmatch but im too lazy
-				txt = txt..number:sub(i-2,i-1)..'/' 
-			end 
-			txt = (txt:sub(1,#txt-1))
-			
-			if player_data.last_update ~= update then
-				flash = true
-				colour.flash(self.Notification)
-			end
-			
-			print(flash)
-			
-			self.Notification.Text.UpdateNumber.Text = txt
-			self.Notification.Text.Description.Text = update['Update']
-			
-			self.PlayerData.Username.Text = local_player.Name:upper()
-			self.PlayerData.Cash.Text = '$'..player_data.Cash
-			
-			self.Visible = true
-			load.button(
-				self.Notification.ImageButton,
-				{
-					['mouse-leave'] = function() notification:TweenPosition(UDim2.new(0,75,1.5,0),'Out','Sine',.3,true) colour.tween(img,color_off) end;
-					['mouse-enter'] = function() notification:TweenPosition(UDim2.new(-2.5,0,1.5,0),'Out','Sine',.3,true) colour.tween(img,color_on) 
-						if flash then player_data.last_update = update player_data_updated:fire(player_data) end end;
-				}
-			)
-			local folder = self.Buttons
-			load.folder(
-				folder,
-				{
-					['CRIME.NET'] = {
-						['mouse-enter'] = function() folder['CRIME.NET'].Facade:TweenPosition(UDim2.new(0,0,0,0),'Out','Sine',.2,true) colour.tween(folder['CRIME.NET'].Facade,color_on,.1) end;
-						['mouse-leave'] = function() folder['CRIME.NET'].Facade:TweenPosition(UDim2.new(0,0,0,20),'Out','Sine',.2,true) colour.tween(folder['CRIME.NET'].Facade,color_off,.1) end;
-						['button-1-up'] = load.switch_ui(lobby_gui.Menu,lobby_gui.CrimeNet)
-					};
-	
-					['Shop'] = {
-						['mouse-enter'] = function() folder['Shop'].Facade:TweenPosition(UDim2.new(0,0,0,0),'Out','Sine',.2,true) colour.tween(folder['Shop'].Facade,color_on,.1) end;
-						['mouse-leave'] = function() folder['Shop'].Facade:TweenPosition(UDim2.new(0,0,0,20),'Out','Sine',.2,true) colour.tween(folder['Shop'].Facade,color_off,.1) end;
-						['button-1-up'] = load.switch_ui(lobby_gui.Menu,lobby_gui.Shop)
-					};
-	
-					['Loadout'] = {
-						['mouse-enter'] = function() folder['Loadout'].Facade:TweenPosition(UDim2.new(0,0,0,0),'Out','Sine',.2,true) colour.tween(folder['Loadout'].Facade,color_on,.1) end;
-						['mouse-leave'] = function() folder['Loadout'].Facade:TweenPosition(UDim2.new(0,0,0,20),'Out','Sine',.2,true) colour.tween(folder['Loadout'].Facade,color_off,.1) end;
-						['button-1-up'] = load.switch_ui(lobby_gui.Menu,lobby_gui.Loadout)
-					};
-	
-					['Tutorial'] = {
-						['mouse-enter'] = function() folder['Tutorial'].Facade:TweenPosition(UDim2.new(0,0,0,0),'Out','Sine',.2,true) colour.tween(folder['Tutorial'].Facade,color_on,.1) end;
-						['mouse-leave'] = function() folder['Tutorial'].Facade:TweenPosition(UDim2.new(0,0,0,20),'Out','Sine',.2,true) colour.tween(folder['Tutorial'].Facade,color_off,.1) end;
-					};
-	 			
-				}
-			)
-		end
-		
-		crime_net()
-		edit_party()
-		loadout	()
-		ready_up()
-		shop()
-		menu()
-	end
-	load.ui()
-end
-
-print('fin')
+_gui.main_menu.announcement.data.Text = _network.RemoteFunction:InvokeServer('get announcement'):upper()
+event.new('new announcement'):connect(function(new_announcement)
+	_gui.main_menu.announcement.data.Text = new_announcement:upper()
+end)

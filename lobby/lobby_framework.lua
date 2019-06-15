@@ -4,12 +4,6 @@
 	@the-vault-blood-money
 	@lobby-client
 	@waffloid
-	
-	in case ms hassam or some other teacher needs proof i can actually CODE THINGS then here you go i wrote this.
-	and yes ive worked over 16 hours in 1 day (its actually quite common for me to work 16 hours lol)
-	
-	id rather not to make big deal out of the fact im good at coding if you were thinking of that (doubt you were, but just saying just in case)
-	just let me not do history GSCE or something so i have more time to work on this
 --]]
 
 
